@@ -1,6 +1,6 @@
 Name:           freerdp
 Version:        1.0.2
-Release:        2%{?dist}
+Release:        5%{?dist}
 Summary:        Remote Desktop Protocol client
 
 Group:          Applications/Communications
@@ -27,6 +27,18 @@ BuildRequires:  desktop-file-utils
 Patch0:		0001-xfreerdp.1.xml-Don-t-claim-to-support-multiple-conne.patch
 Patch1:		0002-Replace-itemizedlist-s-with-variablelist-s.patch
 Patch2:		0003-List-plugins-available-in-RHEL-6.patch
+
+# Fix crash during certification authority verification
+# https://bugzilla.redhat.com/show_bug.cgi?id=1198972
+Patch3:		libfreerdp-core-fix-issue-436.patch
+
+# Fix crash if pulseaudio device isn't specified
+# https://bugzilla.redhat.com/show_bug.cgi?id=1296887
+Patch4:         rdpsnd-pulse-Fix-crash-if-device-isn-t-specified.patch
+
+# Fix crash if requested bitmap isn't in cache
+# https://bugzilla.redhat.com/show_bug.cgi?id=1311171
+Patch5:         cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
 
 Provides:       xfreerdp = %{version}-%{release}
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
@@ -92,6 +104,9 @@ EOF
 %patch0 -p1 -b .multiple-connections
 %patch1 -p1 -b .itemizedlists
 %patch2 -p1 -b .list-plugins
+%patch3 -p1 -b .libfreerdp-core-fix-issue-436
+%patch4 -p1 -b .rdpsnd-pulse-fix-crash-if-device-isn-t-specified
+%patch5 -p1 -b .cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
 
 
 %build
@@ -169,6 +184,15 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
+* Mon Mar 7 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-5
+- Fix crash if requested bitmap isn't in cache (#1311171)
+
+* Thu Jan 21 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-4
+- Fix crash if pulseaudio device isn't specified (#1296887)
+
+* Tue Nov 10 2015 Ondrej Holy <oholy@redhat.com> - 1.0.2-3
+- Fix crash during certification authority verification (#1198972)
+
 * Thu Aug 8 2013 Soren Sandmann <ssp@redhat.com> - 1.0.2-2
 - Add patch listing the plugins available in RHEL 6
   - 0003-List-plugins-available-in-RHEL-6.patch

@@ -1,0 +1,31 @@
+From 800c865bd79e3e4437cceb3219246cfad152205b Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Thu, 11 Jun 2015 13:35:21 +0200
+Subject: [PATCH] rdpsnd/pulse: Fix crash if device isn't specified
+
+Freerdp crashes if pulseaudio device isn't specified on commandline, i.e.:
+xfreerdp --plugin rdpsnd --data pulse
+
+The crash occurs, because data[1] is NULL and it is passed into strlen
+function. We have to check whether data[1] was set before calling strlen
+to fix this crash.
+---
+ channels/rdpsnd/pulse/rdpsnd_pulse.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/channels/rdpsnd/pulse/rdpsnd_pulse.c b/channels/rdpsnd/pulse/rdpsnd_pulse.c
+index 1a331f0..54892cd 100644
+--- a/channels/rdpsnd/pulse/rdpsnd_pulse.c
++++ b/channels/rdpsnd/pulse/rdpsnd_pulse.c
+@@ -474,7 +474,7 @@ int FreeRDPRdpsndDeviceEntry(PFREERDP_RDPSND_DEVICE_ENTRY_POINTS pEntryPoints)
+ 	data = pEntryPoints->plugin_data;
+ 	if (data && strcmp((char*)data->data[0], "pulse") == 0)
+ 	{
+-		if(strlen((char*)data->data[1]) > 0) 
++		if(data->data[1] && strlen((char*)data->data[1]) > 0)
+ 			pulse->device_name = xstrdup((char*)data->data[1]);
+ 		else
+ 			pulse->device_name = NULL;
+-- 
+2.5.0
+

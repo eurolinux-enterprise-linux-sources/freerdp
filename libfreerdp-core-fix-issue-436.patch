@@ -1,0 +1,25 @@
+From aa7b83ff1e97ac394f76b0968acc1d9f55a11d41 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Moreau?= <marcandre.moreau@gmail.com>
+Date: Wed, 15 Feb 2012 16:33:51 -0500
+Subject: [PATCH] libfreerdp-core: fix issue #436
+
+---
+ libfreerdp-core/crypto.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libfreerdp-core/crypto.c b/libfreerdp-core/crypto.c
+index b79ac7a..7b5c895 100644
+--- a/libfreerdp-core/crypto.c
++++ b/libfreerdp-core/crypto.c
+@@ -443,7 +443,7 @@ char** crypto_cert_subject_alt_name(X509* xcert, int* count, int** lengths)
+ 		{
+ 			length = ASN1_STRING_to_UTF8(&string, subject_alt_name->d.dNSName);
+ 			strings[*count] = (char*) string;
+-			*lengths[*count] = length;
++			(*lengths)[*count] = length;
+ 			(*count)++;
+ 		}
+ 	}
+-- 
+2.1.0
+
