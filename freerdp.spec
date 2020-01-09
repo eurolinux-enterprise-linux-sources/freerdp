@@ -1,6 +1,6 @@
 Name:           freerdp
 Version:        1.0.2
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Remote Desktop Protocol client
 
 Group:          Applications/Communications
@@ -39,6 +39,10 @@ Patch4:         rdpsnd-pulse-Fix-crash-if-device-isn-t-specified.patch
 # Fix crash if requested bitmap isn't in cache
 # https://bugzilla.redhat.com/show_bug.cgi?id=1311171
 Patch5:         cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
+
+# Add FIPS mode support
+# https://bugzilla.redhat.com/show_bug.cgi?id=1347920
+Patch6: FIPS-mode-support.patch
 
 Provides:       xfreerdp = %{version}-%{release}
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
@@ -107,6 +111,7 @@ EOF
 %patch3 -p1 -b .libfreerdp-core-fix-issue-436
 %patch4 -p1 -b .rdpsnd-pulse-fix-crash-if-device-isn-t-specified
 %patch5 -p1 -b .cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
+%patch6 -p1 -b .FIPS-mode-support
 
 
 %build
@@ -184,6 +189,9 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
+* Thu Feb 1 2018 Ondrej Holy <oholy@redhat.com> - 1.0.2-6
+- Add FIPS mode support (#1347920)
+
 * Mon Mar 7 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-5
 - Fix crash if requested bitmap isn't in cache (#1311171)
 
