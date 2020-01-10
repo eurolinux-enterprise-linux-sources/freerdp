@@ -1,0 +1,25 @@
+From f341cd43bf1e780664dcf55aaff46feee92a86b9 Mon Sep 17 00:00:00 2001
+From: Chris <ccpp@gmx.at>
+Date: Mon, 17 Jun 2013 21:49:29 +0200
+Subject: [PATCH 5/5] Fixed a possible buffer overflow issue
+
+---
+ libfreerdp-core/tls.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libfreerdp-core/tls.c b/libfreerdp-core/tls.c
+index 2fbaa2c..ed4d0cb 100644
+--- a/libfreerdp-core/tls.c
++++ b/libfreerdp-core/tls.c
+@@ -268,7 +268,7 @@ boolean tls_match_hostname(char *pattern, int pattern_length, char *hostname)
+ 			return TRUE;
+ 	}
+ 
+-	if (pattern_length > 2 && pattern[0] == '*' && pattern[1] == '.')
++	if (pattern_length > 2 && pattern[0] == '*' && pattern[1] == '.' && strlen(hostname) >= pattern_length)
+ 	{
+ 		char *check_hostname = &hostname[ strlen(hostname) - pattern_length+1 ];
+ 		if (memcmp((void*) check_hostname, (void*) &pattern[1], pattern_length - 1) == 0 )
+-- 
+2.5.5
+

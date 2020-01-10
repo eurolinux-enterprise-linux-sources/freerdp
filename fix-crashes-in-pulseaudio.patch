@@ -1,0 +1,32 @@
+From fe2a549e5d6dd9352a6d14c1d0d45a5c263c5d06 Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Thu, 11 Jun 2015 13:25:35 +0200
+Subject: [PATCH] rdpsnd/pulse: Fix crashes in pulseaudio
+
+Function pa_stream_trigger has to be called under lock to avoid
+following crashes on asserts:
+
+Assertion 'e->mainloop->n_enabled_defer_events > 0' failed at pulse/mainloop.c:257, function mainloop_defer_enable(). Aborting.
+Assertion '!e->next' failed at pulsecore/queue.c:104, function pa_queue_pop(). Aborting.
+Assertion 'q->front' failed at pulsecore/queue.c:81, function pa_queue_push(). Aborting.
+---
+ channels/rdpsnd/pulse/rdpsnd_pulse.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/channels/rdpsnd/pulse/rdpsnd_pulse.c b/channels/rdpsnd/pulse/rdpsnd_pulse.c
+index 1a331f0..0fcedef 100644
+--- a/channels/rdpsnd/pulse/rdpsnd_pulse.c
++++ b/channels/rdpsnd/pulse/rdpsnd_pulse.c
+@@ -452,7 +452,9 @@ static void rdpsnd_pulse_start(rdpsndDevicePlugin* device)
+ 	if (!pulse->stream)
+ 		return;
+ 
++	pa_threaded_mainloop_lock(pulse->mainloop);
+ 	pa_stream_trigger(pulse->stream, NULL, NULL);
++	pa_threaded_mainloop_unlock(pulse->mainloop);
+ }
+ 
+ int FreeRDPRdpsndDeviceEntry(PFREERDP_RDPSND_DEVICE_ENTRY_POINTS pEntryPoints)
+-- 
+2.5.0
+
