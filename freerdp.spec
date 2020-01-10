@@ -1,6 +1,6 @@
 Name:           freerdp
 Version:        1.0.2
-Release:        15%{?dist}.1
+Release:        6%{?dist}.1
 Summary:        Remote Desktop Protocol client
 
 Group:          Applications/Communications
@@ -30,70 +30,13 @@ Requires:       %{name}-plugins%{?_isa} = %{version}-%{release}
 
 Patch0: 0001-xfreerdp.1.xml-Don-t-claim-to-support-multiple-conne.patch
 Patch1: 0002-Replace-itemizedlist-s-with-variablelist-s.patch
+Patch2: 0003-List-plugins-available-in-RHEL-6.patch
 
 # https://bugzilla.redhat.com/show_bug.cgi?id=1186916
 Patch3: libfreerdp-core-fix-issue-436.patch
 
 # https://bugzilla.redhat.com/show_bug.cgi?id=1296654
 Patch4: fix-crashes-in-pulseaudio.patch
-
-# Fix crash if pulseaudio device isn't specified
-# https://bugzilla.redhat.com/show_bug.cgi?id=1067543
-Patch5: rdpsnd-pulse-Fix-crash-if-device-isn-t-specified.patch
-
-# Fix crash if requested bitmap isn't in cache
-# https://bugzilla.redhat.com/show_bug.cgi?id=1311164
-Patch6: cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
-
-# Add support for wildcard certificates
-# https://bugzilla.redhat.com/show_bug.cgi?id=1275241
-Patch7: libfreerdp-core-verify-TLS-certificate-with-both-TLS.patch
-Patch8: fix-issue-530-NLA-password-asked-after-certificate-r.patch
-Patch9: 1-Add-support-for-Wildcard-Certificates-2-For-Gatewa.patch
-Patch10: Using-the-more-efficient-code-for-comparing-host-nam.patch
-Patch11: Fixed-a-possible-buffer-overflow-issue.patch
-
-# Prevent stucked keys on focus out and unmap events
-# https://bugzilla.redhat.com/show_bug.cgi?id=1415069
-Patch12: x11-release-all-pressed-keys-when-window-is-unmapped.patch
-Patch13: release-keys-when-xfreerdp-is-unfocused-to-prevent-s.patch
-
-# Fix crashes when copying images
-# https://bugzilla.redhat.com/show_bug.cgi?id=1417536
-Patch14: remove-unncessary-NULL-ptr-check.patch
-
-# Enable TLS 1.1 connections and later
-# https://bugzilla.redhat.com/show_bug.cgi?id=1312967
-Patch15: tls-enable-tls-1.patch
-
-# Add description for available plugins
-# https://bugzilla.redhat.com/show_bug.cgi?id=1428041
-Patch16: Add-description-for-available-plugins.patch
-Patch20: Fix-smartcard-usage-in-manpage.patch
-
-# Fix NTLM on big endian
-# https://bugzilla.redhat.com/show_bug.cgi?id=1204742
-Patch17: Fix-NTLM-on-big-endian.patch
-
-# Fix colors on big endian
-# https://bugzilla.redhat.com/show_bug.cgi?id=1308810
-Patch18: Fix-colors-on-big-endian.patch
-
-# Add FIPS mode support
-# https://bugzilla.redhat.com/show_bug.cgi?id=1363811
-Patch19: FIPS-mode-support.patch
-
-# Fix CVE-2018-8786
-# https://bugzilla.redhat.com/show_bug.cgi?id=1684152
-Patch21: CVE-2018-8786.patch
-
-# Fix CVE-2018-8787
-# https://bugzilla.redhat.com/show_bug.cgi?id=1684156
-Patch22: CVE-2018-8787.patch
-
-# Fix CVE-2018-8788
-# https://bugzilla.redhat.com/show_bug.cgi?id=1684163
-Patch23: CVE-2018-8788.patch
 
 %description
 The xfreerdp Remote Desktop Protocol (RDP) client from the FreeRDP
@@ -142,27 +85,9 @@ developing applications that use %{name}-libs.
 
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 %patch3 -p1 -b .fix-invalid-dereference
 %patch4 -p1 -b .fix-crashes-in-pulseaudio
-%patch5 -p1 -b .rdpsnd-pulse-fix-crash-if-device-isn-t-specified
-%patch6 -p1 -b .cover-the-case-of-servers-asking-for-cached-bitmaps-.patch
-%patch7 -p1 -b .libfreerdp-core-verify-TLS-certificate-with-both-TLS
-%patch8 -p1 -b .fix-issue-530-NLA-password-asked-after-certificate-r
-%patch9 -p1 -b .1-Add-support-for-Wildcard-Certificates-2-For-Gatewa
-%patch10 -p1 -b .Using-the-more-efficient-code-for-comparing-host-nam
-%patch11 -p1 -b .Fixed-a-possible-buffer-overflow-issue
-%patch12 -p1 -b .x11-release-all-pressed-keys-when-window-is-unmapped
-%patch13 -p1 -b .release-keys-when-xfreerdp-is-unfocused-to-prevent-s
-%patch14 -p1 -b .remove-unncessary-NULL-ptr-check
-%patch15 -p1 -b .tls-enable-tls-1
-%patch16 -p1 -b .Add-description-for-available-plugins
-%patch17 -p1 -b .Fix-NTLM-on-big-endian
-%patch18 -p1 -b .Fix-colors-on-big-endian
-%patch19 -p1 -b .FIPS-mode-support
-%patch20 -p1 -b .Fix-smartcard-usage-in-manpage
-%patch21 -p1 -b .CVE-2018-8786
-%patch22 -p1 -b .CVE-2018-8787
-%patch23 -p1 -b .CVE-2018-8788
 
 cat << EOF > xfreerdp.desktop 
 [Desktop Entry]
@@ -252,42 +177,9 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
-* Fri Mar 8 2019 Ondrej Holy <oholy@redhat.com> - 1.0.2-15.1
-- Fix CVE-2018-8786 (#1684152)
-- Fix CVE-2018-8787 (#1684156)
-- Fix CVE-2018-8788 (#1684163)
-
-* Wed Jan 31 2018 Ondrej Holy <oholy@redhat.com> - 1.0.2-15
-- Fix smartcard usage in manpage (#1428041)
-
-* Thu Nov 23 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-14
-- Add FIPS mode support (#1363811)
-
-* Thu Oct 5 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-13
-- Fix NTLM on big endian (#1204742)
-- Fix colors on big endian (#1308810)
-
-* Thu Sep 21 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-12
-- Add description for available plugins (#1428041)
-
-* Thu Sep 7 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-11
-- Use boolean types defined stdbool.h (#1404575)
-- Prevent stucked keys on focus out and unmap events (#1415069)
-- Fix crashes when copying images (#1417536)
-- Enable TLS 1.1 connections and later (#1312967)
-
-* Mon Apr 18 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-10
-- Add support for wildcard certificates (#1275241)
-
-* Wed Apr 6 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-9
-- Fix crash if requested bitmap isn't in cache (#1311164)
-
-* Wed Apr 6 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-8
-- Fix crash if pulseaudio device isn't specified (#1067543)
-
-* Fri Jan 15 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-7
+* Fri Jan 15 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-6.el7_2.1
 - Fix crashes in pulseaudio
-- Resolves: #1210049
+- Resolves: #1298832
 
 * Thu Mar 19 2015 Ondrej Holy <oholy@redhat.com> - 1.0.2-6
 - Fix crash during CA verification caused by invalid pointer dereference

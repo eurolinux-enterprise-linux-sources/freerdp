@@ -1,0 +1,88 @@
+From 52c081034c18655865a5c851bfac965ad28a2508 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?S=C3=B8ren=20Sandmann=20Pedersen?= <ssp@redhat.com>
+Date: Thu, 8 Aug 2013 12:17:53 -0400
+Subject: [PATCH 3/3] List plugins available in RHEL 6
+
+Add a brief explanation of what each plugin does and make a note that
+the ALSA backend of the rdpsnd plugin is not supported.
+
+This patch is not intended for upstream as the list of plugins is
+specific to RHEL 6.
+---
+ client/X11/xfreerdp.1.xml |   45 ++++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 42 insertions(+), 3 deletions(-)
+
+diff --git a/client/X11/xfreerdp.1.xml b/client/X11/xfreerdp.1.xml
+index 363a245..e0a66b9 100644
+--- a/client/X11/xfreerdp.1.xml
++++ b/client/X11/xfreerdp.1.xml
+@@ -486,8 +486,47 @@
+         <term>--plugin <replaceable class="parameter">pluginname</replaceable></term>
+         <listitem>
+           <para>
+-            load <replaceable class="parameter">pluginname</replaceable>
++            Load <replaceable class="parameter">pluginname</replaceable>
+           </para>
++	  <para>
++	    In Red Hat Enterprise Linux 6, the following plugins are 
++	    available: 
++	    <variablelist>
++	      <varlistentry>
++		<term>cliprdr</term>
++		<listitem><para>Clipboard support</para></listitem>
++	      </varlistentry>
++	      <varlistentry>
++		<term>drdynvc</term>
++		<listitem><para>Used for multimedia redirection</para></listitem>
++	      </varlistentry>
++	      <varlistentry>
++		<term>rdpsnd</term>
++		<listitem><para>For audio output</para></listitem>
++	      </varlistentry>
++	      <varlistentry>
++		<term>rail</term>
++		<listitem><para>Remote Applications Integrated Locally</para></listitem>
++	      </varlistentry>
++	      <varlistentry>
++		<term>rdpdbg</term>
++		<listitem><para>Debugging Virtual Channel</para></listitem>
++	      </varlistentry>
++	      <varlistentry>
++		<term>rdpdr</term>
++		<listitem><para>File System Support</para></listitem>
++	      </varlistentry>
++	    </variablelist>
++	  </para>
++	  <para>As an example,</para>
++	  <para><command>xfreerdp</command> --plugin
++	      rdpsnd <replaceable class="parameter">server</replaceable>
++	  </para>
++	  <para>will enable audio output using the PulseAudio backend of
++	    the rdpsnd plugin. Please Note that Red Hat Enterprise
++	    Linux 6 does not include support for the ALSA backend of
++	    the rdpsnd plugin.
++	  </para>
+         </listitem>
+       </varlistentry>
+       <varlistentry>
+@@ -518,7 +557,7 @@
+         <term>--ntlm <replaceable class="parameter">version</replaceable></term>
+         <listitem>
+           <para>
+-            force NTLM protocol version to be <replaceable class="parameter">version</replaceable>, which can be one of 1 or 2.
++            Force NTLM protocol version to be <replaceable class="parameter">version</replaceable>, which can be one of 1 or 2.
+           </para>
+         </listitem>
+       </varlistentry>
+@@ -526,7 +565,7 @@
+         <term>--sec <replaceable class="parameter">proto</replaceable></term>
+         <listitem>
+           <para>
+-            force protocol security. <replaceable class="parameter">proto</replaceable> can be one of rdp, tls or nla.
++            Force protocol security. <replaceable class="parameter">proto</replaceable> can be one of rdp, tls or nla.
+           </para>
+         </listitem>
+       </varlistentry>
+-- 
+1.7.1
+
