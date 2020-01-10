@@ -1,6 +1,6 @@
 Name:           freerdp
 Version:        1.0.2
-Release:        15%{?dist}
+Release:        15%{?dist}.1
 Summary:        Remote Desktop Protocol client
 
 Group:          Applications/Communications
@@ -83,6 +83,18 @@ Patch18: Fix-colors-on-big-endian.patch
 # https://bugzilla.redhat.com/show_bug.cgi?id=1363811
 Patch19: FIPS-mode-support.patch
 
+# Fix CVE-2018-8786
+# https://bugzilla.redhat.com/show_bug.cgi?id=1684152
+Patch21: CVE-2018-8786.patch
+
+# Fix CVE-2018-8787
+# https://bugzilla.redhat.com/show_bug.cgi?id=1684156
+Patch22: CVE-2018-8787.patch
+
+# Fix CVE-2018-8788
+# https://bugzilla.redhat.com/show_bug.cgi?id=1684163
+Patch23: CVE-2018-8788.patch
+
 %description
 The xfreerdp Remote Desktop Protocol (RDP) client from the FreeRDP
 project.
@@ -148,6 +160,9 @@ developing applications that use %{name}-libs.
 %patch18 -p1 -b .Fix-colors-on-big-endian
 %patch19 -p1 -b .FIPS-mode-support
 %patch20 -p1 -b .Fix-smartcard-usage-in-manpage
+%patch21 -p1 -b .CVE-2018-8786
+%patch22 -p1 -b .CVE-2018-8787
+%patch23 -p1 -b .CVE-2018-8788
 
 cat << EOF > xfreerdp.desktop 
 [Desktop Entry]
@@ -237,6 +252,11 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 
 %changelog
+* Fri Mar 8 2019 Ondrej Holy <oholy@redhat.com> - 1.0.2-15.1
+- Fix CVE-2018-8786 (#1684152)
+- Fix CVE-2018-8787 (#1684156)
+- Fix CVE-2018-8788 (#1684163)
+
 * Wed Jan 31 2018 Ondrej Holy <oholy@redhat.com> - 1.0.2-15
 - Fix smartcard usage in manpage (#1428041)
 
