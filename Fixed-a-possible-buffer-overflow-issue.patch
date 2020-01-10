@@ -12,7 +12,7 @@ index 2fbaa2c..ed4d0cb 100644
 --- a/libfreerdp-core/tls.c
 +++ b/libfreerdp-core/tls.c
 @@ -268,7 +268,7 @@ boolean tls_match_hostname(char *pattern, int pattern_length, char *hostname)
- 			return TRUE;
+ 			return true;
  	}
  
 -	if (pattern_length > 2 && pattern[0] == '*' && pattern[1] == '.')

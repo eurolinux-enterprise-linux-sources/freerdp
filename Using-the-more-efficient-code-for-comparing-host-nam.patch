@@ -12,7 +12,7 @@ index db09960..2fbaa2c 100644
 --- a/libfreerdp-core/tls.c
 +++ b/libfreerdp-core/tls.c
 @@ -268,30 +268,6 @@ boolean tls_match_hostname(char *pattern, int pattern_length, char *hostname)
- 			return TRUE;
+ 			return true;
  	}
  
 -	/* ccpp: Check for wildcard certificates */
@@ -34,7 +34,7 @@ index db09960..2fbaa2c 100644
 -
 -			if (hostname[hostname_position] != pattern[pattern_position] )
 -			{
--				return FALSE;
+-				return false;
 -			}
 -		}
 -	}

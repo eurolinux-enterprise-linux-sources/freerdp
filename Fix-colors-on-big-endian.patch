@@ -1,0 +1,532 @@
+From 5e1aa9e1a4ed8ca4119a6e5b4db554af5367784e Mon Sep 17 00:00:00 2001
+From: Ondrej Holy <oholy@redhat.com>
+Date: Tue, 3 Oct 2017 09:25:25 +0200
+Subject: [PATCH 2/2] Fix colors on big endian
+
+Based on fixes from master:
+https://github.com/FreeRDP/FreeRDP/pull/4135
+---
+ client/X11/xf_graphics.c  | 31 +++++++++++++++++-
+ client/X11/xfreerdp.c     |  4 +++
+ libfreerdp-codec/bitmap.c |  7 ++--
+ libfreerdp-codec/color.c  | 83 +++++++++++++++++++++++++++++++++++------------
+ libfreerdp-gdi/16bpp.c    | 17 +++++++---
+ libfreerdp-gdi/32bpp.c    | 21 +++++++++---
+ 6 files changed, 129 insertions(+), 34 deletions(-)
+
+diff --git a/client/X11/xf_graphics.c b/client/X11/xf_graphics.c
+index ed5f9bc25..0bd4e9378 100644
+--- a/client/X11/xf_graphics.c
++++ b/client/X11/xf_graphics.c
+@@ -49,6 +49,8 @@ void xf_Bitmap_New(rdpContext* context, rdpBitmap* bitmap)
+ 		{
+ 			image = XCreateImage(xfi->display, xfi->visual, xfi->depth,
+ 				ZPixmap, 0, (char*) data, bitmap->width, bitmap->height, xfi->scanline_pad, 0);
++			image->byte_order = LSBFirst;
++			image->bitmap_bit_order = LSBFirst;
+ 
+ 			XPutImage(xfi->display, pixmap, xfi->gc, image, 0, 0, 0, 0, bitmap->width, bitmap->height);
+ 			XFree(image);
+@@ -89,6 +91,8 @@ void xf_Bitmap_Paint(rdpContext* context, rdpBitmap* bitmap)
+ 
+ 	image = XCreateImage(xfi->display, xfi->visual, xfi->depth,
+ 			ZPixmap, 0, (char*) bitmap->data, bitmap->width, bitmap->height, xfi->scanline_pad, 0);
++	image->byte_order = LSBFirst;
++	image->bitmap_bit_order = LSBFirst;
+ 
+ 	XPutImage(xfi->display, xfi->primary, xfi->gc,
+ 			image, 0, 0, bitmap->left, bitmap->top, width, height);
+@@ -149,6 +153,13 @@ void xf_Bitmap_SetSurface(rdpContext* context, rdpBitmap* bitmap, boolean primar
+ 
+ /* Pointer Class */
+ 
++#define Data_Read_UINT32(_d, _v) do { _v = \
++   (uint32)(*((uint8*) _d)) + \
++   (((uint32)(*((uint8*) _d + 1))) << 8) + \
++   (((uint32)(*((uint8*) _d + 2))) << 16) + \
++   (((uint32)(*((uint8*) _d + 3))) << 24); \
++} while (0)
++
+ void xf_Pointer_New(rdpContext* context, rdpPointer* pointer)
+ {
+ 	XcursorImage ci;
+@@ -170,6 +181,25 @@ void xf_Pointer_New(rdpContext* context, rdpPointer* pointer)
+ 				pointer->width, pointer->height, pointer->xorBpp, xfi->clrconv);
+ 	}
+ 
++	if (xfi->big_endian)
++	{
++		int x, y;
++		uint32* pixel;
++		uint32 value;
++
++		pixel = (uint32*) ci.pixels;
++
++		for (y = 0; y < ci.height; y++)
++		{
++			for (x = 0; x < ci.width; x++)
++			{
++				Data_Read_UINT32(pixel, value);
++				*pixel = value;
++				pixel++;
++			}
++		}
++	}
++
+ 	((xfPointer*) pointer)->cursor = XcursorImageLoadCursor(xfi->display, &ci);
+ 	xfree(ci.pixels);
+ }
+@@ -209,7 +239,6 @@ void xf_Glyph_New(rdpContext* context, rdpGlyph* glyph)
+ 
+ 	image = XCreateImage(xfi->display, xfi->visual, 1,
+ 			ZPixmap, 0, (char*) glyph->aj, glyph->cx, glyph->cy, 8, scanline);
+-
+ 	image->byte_order = MSBFirst;
+ 	image->bitmap_bit_order = MSBFirst;
+ 
+diff --git a/client/X11/xfreerdp.c b/client/X11/xfreerdp.c
+index 2d0e6704d..786cc0bd8 100644
+--- a/client/X11/xfreerdp.c
++++ b/client/X11/xfreerdp.c
+@@ -181,6 +181,8 @@ void xf_sw_desktop_resize(rdpContext* context)
+ 			XDestroyImage(xfi->image);
+ 			xfi->image = XCreateImage(xfi->display, xfi->visual, xfi->depth, ZPixmap, 0,
+ 					(char*) gdi->primary_buffer, gdi->width, gdi->height, xfi->scanline_pad, 0);
++			xfi->image->byte_order = LSBFirst;
++			xfi->image->bitmap_bit_order = LSBFirst;
+ 		}
+ 	}
+ }
+@@ -707,6 +709,8 @@ boolean xf_post_connect(freerdp* instance)
+ 
+ 	xfi->image = XCreateImage(xfi->display, xfi->visual, xfi->depth, ZPixmap, 0,
+ 			(char*) xfi->primary_buffer, xfi->width, xfi->height, xfi->scanline_pad, 0);
++	xfi->image->byte_order = LSBFirst;
++	xfi->image->bitmap_bit_order = LSBFirst;
+ 
+ 	xfi->bmp_codec_none = (uint8*) xmalloc(64 * 64 * 4);
+ 
+diff --git a/libfreerdp-codec/bitmap.c b/libfreerdp-codec/bitmap.c
+index 635a583aa..aafffc39b 100644
+--- a/libfreerdp-codec/bitmap.c
++++ b/libfreerdp-codec/bitmap.c
+@@ -214,9 +214,10 @@ static uint32 ExtractRunLength(uint32 code, uint8* pbOrderHdr, uint32* advance)
+ #undef WRITEFIRSTLINEFGBGIMAGE
+ #undef RLEDECOMPRESS
+ #undef RLEEXTRA
+-#define DESTWRITEPIXEL(_buf, _pix) ((uint16*)(_buf))[0] = (uint16)(_pix)
+-#define DESTREADPIXEL(_pix, _buf) _pix = ((uint16*)(_buf))[0]
+-#define SRCREADPIXEL(_pix, _buf) _pix = ((uint16*)(_buf))[0]
++#define DESTWRITEPIXEL(_buf, _pix) do { (_buf)[0] = (uint8)(_pix);  \
++  (_buf)[1] = (uint8)((_pix) >> 8); } while (0)
++#define DESTREADPIXEL(_pix, _buf) _pix = (_buf)[0] | ((_buf)[1] << 8)
++#define SRCREADPIXEL(_pix, _buf) _pix = (_buf)[0] | ((_buf)[1] << 8)
+ #define DESTNEXTPIXEL(_buf) _buf += 2
+ #define SRCNEXTPIXEL(_buf) _buf += 2
+ #define WRITEFGBGIMAGE WriteFgBgImage16to16
+diff --git a/libfreerdp-codec/color.c b/libfreerdp-codec/color.c
+index ff3bacb79..dbff7b159 100644
+--- a/libfreerdp-codec/color.c
++++ b/libfreerdp-codec/color.c
+@@ -25,6 +25,30 @@
+ #include <freerdp/codec/color.h>
+ #include <freerdp/utils/memory.h>
+ 
++#define Data_Read_UINT32(_d, _v) do { _v = \
++   (uint32)(*((uint8*) _d)) + \
++   (((uint32)(*((uint8*) _d + 1))) << 8) + \
++   (((uint32)(*((uint8*) _d + 2))) << 16) + \
++   (((uint32)(*((uint8*) _d + 3))) << 24); \
++} while (0)
++
++#define Data_Write_UINT32(_d, _v) do { \
++   *((uint8*) _d) = (_v) & 0xFF; \
++   *((uint8*) _d + 1) = ((_v) >> 8) & 0xFF; \
++   *((uint8*) _d + 2) = ((_v) >> 16) & 0xFF; \
++   *((uint8*) _d + 3) = ((_v) >> 24) & 0xFF; \
++} while (0)
++
++#define Data_Read_UINT16(_d, _v) do { _v = \
++   (uint16)(*((uint8*) _d)) + \
++   (((uint16)(*((uint8*) _d + 1))) << 8); \
++} while (0)
++
++#define Data_Write_UINT16(_d, _v) do { \
++   *((uint8*) _d) = (_v) & 0xFF; \
++   *((uint8*) _d + 1) = ((_v) >> 8) & 0xFF; \
++} while (0)
++
+ int freerdp_get_pixel(uint8 * data, int x, int y, int width, int height, int bpp)
+ {
+ 	int start;
+@@ -32,6 +56,7 @@ int freerdp_get_pixel(uint8 * data, int x, int y, int width, int height, int bpp
+ 	uint16 *src16;
+ 	uint32 *src32;
+ 	int red, green, blue;
++	uint32 pixel;
+ 
+ 	switch (bpp)
+ 	{
+@@ -45,7 +70,9 @@ int freerdp_get_pixel(uint8 * data, int x, int y, int width, int height, int bpp
+ 		case 15:
+ 		case 16:
+ 			src16 = (uint16*) data;
+-			return src16[y * width + x];
++			src16 += y * width + x;
++			Data_Read_UINT16 (src16, pixel);
++			return pixel;
+ 		case 24:
+ 			data += y * width * 3;
+ 			data += x * 3;
+@@ -55,7 +82,9 @@ int freerdp_get_pixel(uint8 * data, int x, int y, int width, int height, int bpp
+ 			return RGB24(red, green, blue);
+ 		case 32:
+ 			src32 = (uint32*) data;
+-			return src32[y * width + x];
++			src32 += y * width + x;
++			Data_Read_UINT32 (src32, pixel);
++			return pixel;
+ 		default:
+ 			break;
+ 	}
+@@ -82,7 +111,8 @@ void freerdp_set_pixel(uint8* data, int x, int y, int width, int height, int bpp
+ 	else if (bpp == 32)
+ 	{
+ 		dst32 = (int*) data;
+-		dst32[y * width + x] = pixel;
++		dst32 += y * width + x;
++		Data_Write_UINT32 (dst32, pixel);
+ 	}
+ }
+ 
+@@ -383,7 +413,7 @@ uint8* freerdp_image_convert_8bpp(uint8* srcData, uint8* dstData, int width, int
+ 			green = clrconv->palette->entries[pixel].green;
+ 			blue = clrconv->palette->entries[pixel].blue;
+ 			pixel = (clrconv->invert) ? BGR15(red, green, blue) : RGB15(red, green, blue);
+-			*dst16 = pixel;
++			Data_Write_UINT16 (dst16, pixel);
+ 			dst16++;
+ 		}
+ 		return dstData;
+@@ -402,7 +432,7 @@ uint8* freerdp_image_convert_8bpp(uint8* srcData, uint8* dstData, int width, int
+ 			green = clrconv->palette->entries[pixel].green;
+ 			blue = clrconv->palette->entries[pixel].blue;
+ 			pixel = (clrconv->invert) ? BGR16(red, green, blue) : RGB16(red, green, blue);
+-			*dst16 = pixel;
++			Data_Write_UINT16 (dst16, pixel);
+ 			dst16++;
+ 		}
+ 		return dstData;
+@@ -422,7 +452,7 @@ uint8* freerdp_image_convert_8bpp(uint8* srcData, uint8* dstData, int width, int
+ 			green = clrconv->palette->entries[pixel].green;
+ 			blue = clrconv->palette->entries[pixel].blue;
+ 			pixel = (clrconv->invert) ? RGB32(red, green, blue) : BGR32(red, green, blue);
+-			*dst32 = pixel;
++			Data_Write_UINT32 (dst32, pixel);
+ 			dst32++;
+ 		}
+ 		return dstData;
+@@ -460,11 +490,11 @@ uint8* freerdp_image_convert_15bpp(uint8* srcData, uint8* dstData, int width, in
+ 		dst32 = (uint32 *) dstData;
+ 		for (i = width * height; i > 0; i--)
+ 		{
+-			pixel = *src16;
++			Data_Read_UINT16 (src16, pixel);
+ 			src16++;
+ 			GetBGR15(red, green, blue, pixel);
+ 			pixel = (clrconv->invert) ? RGB32(red, green, blue) : BGR32(red, green, blue);
+-			*dst32 = pixel;
++			Data_Write_UINT32 (dst32, pixel);
+ 			dst32++;
+ 		}
+ 		return dstData;
+@@ -478,12 +508,12 @@ uint8* freerdp_image_convert_15bpp(uint8* srcData, uint8* dstData, int width, in
+ 		dst16 = (uint16 *) dstData;
+ 		for (i = width * height; i > 0; i--)
+ 		{
+-			pixel = *src16;
++			Data_Read_UINT16 (src16, pixel);
+ 			src16++;
+ 			GetRGB_555(red, green, blue, pixel);
+ 			RGB_555_565(red, green, blue);
+ 			pixel = (clrconv->invert) ? BGR565(red, green, blue) : RGB565(red, green, blue);
+-			*dst16 = pixel;
++			Data_Write_UINT16 (dst16, pixel);
+ 			dst16++;
+ 		}
+ 		return dstData;
+@@ -508,12 +538,15 @@ uint8* freerdp_image_convert_16bpp(uint8* srcData, uint8* dstData, int width, in
+ 			uint8 red, green, blue;
+ 			uint16* src16 = (uint16 *) srcData;
+ 			uint16* dst16 = (uint16 *) dstData;
++			uint32 pixel;
+ 
+ 			for (i = width * height; i > 0; i--)
+ 			{
+-				GetRGB_565(red, green, blue, (*src16));
++				Data_Read_UINT16 (src16, pixel);
++				GetRGB_565(red, green, blue, pixel);
+ 				RGB_565_555(red, green, blue);
+-				(*dst16) = (clrconv->invert) ? BGR555(red, green, blue) : RGB555(red, green, blue);
++				pixel = (clrconv->invert) ? BGR555(red, green, blue) : RGB555(red, green, blue);
++				Data_Write_UINT16 (dst16, pixel);
+ 				src16++;
+ 				dst16++;
+ 			}
+@@ -531,6 +564,7 @@ uint8* freerdp_image_convert_16bpp(uint8* srcData, uint8* dstData, int width, in
+ 		uint8 *dst8;
+ 		uint16 *src16;
+ 		uint8 red, green, blue;
++		uint32 pixel;
+ 
+ 		if (dstData == NULL)
+ 			dstData = (uint8*) malloc(width * height * 3);
+@@ -540,7 +574,8 @@ uint8* freerdp_image_convert_16bpp(uint8* srcData, uint8* dstData, int width, in
+ 
+ 		for (i = width * height; i > 0; i--)
+ 		{
+-			GetBGR16(red, green, blue, *src16);
++			Data_Read_UINT16 (src16, pixel);
++			GetBGR16(red, green, blue, pixel);
+ 			src16++;
+ 
+ 			if (clrconv->invert)
+@@ -574,11 +609,11 @@ uint8* freerdp_image_convert_16bpp(uint8* srcData, uint8* dstData, int width, in
+ 
+ 		for (i = width * height; i > 0; i--)
+ 		{
+-			pixel = *src16;
++			Data_Read_UINT16 (src16, pixel);
+ 			src16++;
+ 			GetBGR16(red, green, blue, pixel);
+ 			pixel = (clrconv->invert) ? RGB32(red, green, blue) : BGR32(red, green, blue);
+-			*dst32 = pixel;
++			Data_Write_UINT32 (dst32, pixel);
+ 			dst32++;
+ 		}
+ 		return dstData;
+@@ -619,6 +654,7 @@ uint8* freerdp_image_convert_32bpp(uint8* srcData, uint8* dstData, int width, in
+ 		uint16 *dst16;
+ 		uint32 *src32;
+ 		uint8 red, green, blue;
++		uint32 pixel;
+ 
+ 		if (dstData == NULL)
+ 			dstData = (uint8*) malloc(width * height * 2);
+@@ -628,8 +664,10 @@ uint8* freerdp_image_convert_32bpp(uint8* srcData, uint8* dstData, int width, in
+ 
+ 		for (index = 0; index < width * height; index++)
+ 		{
+-			GetBGR32(blue, green, red, *src32);
+-			*dst16 = (clrconv->invert) ? BGR16(red, green, blue) : RGB16(red, green, blue);
++			Data_Read_UINT32 (src32, pixel);
++			GetBGR32(blue, green, red, pixel);
++			pixel = (clrconv->invert) ? BGR16(red, green, blue) : RGB16(red, green, blue);
++			Data_Write_UINT16 (dst16, pixel);
+ 			src32++;
+ 			dst16++;
+ 		}
+@@ -878,6 +916,7 @@ uint8* freerdp_mono_image_convert(uint8* srcData, int width, int height, int src
+ 	int bitIndex;
+ 	uint8 redBg, greenBg, blueBg;
+ 	uint8 redFg, greenFg, blueFg;
++	uint32 pixel;
+ 
+ 	switch (srcBpp)
+ 	{
+@@ -941,12 +980,13 @@ uint8* freerdp_mono_image_convert(uint8* srcData, int width, int height, int src
+ 			{
+ 				if ((bitMask >> bitIndex) & 0x01)
+ 				{
+-					*dst16 = bgcolor;
++					pixel = bgcolor;
+ 				}
+ 				else
+ 				{
+-					*dst16 = fgcolor;
++					pixel = fgcolor;
+ 				}
++				Data_Write_UINT16 (dst16, pixel);
+ 				dst16++;
+ 			}
+ 			srcData++;
+@@ -967,12 +1007,13 @@ uint8* freerdp_mono_image_convert(uint8* srcData, int width, int height, int src
+ 			{
+ 				if ((bitMask >> bitIndex) & 0x01)
+ 				{
+-					*dst32 = (clrconv->invert) ? BGR32(redBg, greenBg, blueBg) : RGB32(redBg, greenBg, blueBg);
++					pixel = (clrconv->invert) ? BGR32(redBg, greenBg, blueBg) : RGB32(redBg, greenBg, blueBg);
+ 				}
+ 				else
+ 				{
+-					*dst32 = (clrconv->invert) ? BGR32(redFg, greenFg, blueFg) : RGB32(redFg, greenFg, blueFg);
++					pixel = (clrconv->invert) ? BGR32(redFg, greenFg, blueFg) : RGB32(redFg, greenFg, blueFg);
+ 				}
++				Data_Write_UINT32 (dst32, pixel);
+ 				dst32++;
+ 			}
+ 			srcData++;
+diff --git a/libfreerdp-gdi/16bpp.c b/libfreerdp-gdi/16bpp.c
+index 1b2a2e65d..dd52060ce 100644
+--- a/libfreerdp-gdi/16bpp.c
++++ b/libfreerdp-gdi/16bpp.c
+@@ -66,6 +66,11 @@ uint16 gdi_get_color_16bpp(HGDI_DC hdc, GDI_COLOR color)
+ 	return color16;
+ }
+ 
++#define Data_Write_UINT16(_d, _v) do { \
++   *((uint8*) _d) = (_v) & 0xFF; \
++   *((uint8*) _d + 1) = ((_v) >> 8) & 0xFF; \
++} while (0)
++
+ int FillRect_16bpp(HGDI_DC hdc, HGDI_RECT rect, HGDI_BRUSH hbr)
+ {
+ 	int x, y;
+@@ -90,7 +95,7 @@ int FillRect_16bpp(HGDI_DC hdc, HGDI_RECT rect, HGDI_BRUSH hbr)
+ 		{
+ 			for (x = 0; x < nWidth; x++)
+ 			{
+-				*dstp = color16;
++				Data_Write_UINT16(dstp, color16);
+ 				dstp++;
+ 			}
+ 		}
+@@ -373,11 +378,13 @@ static int BitBlt_DSPDxax_16bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 	uint16 src16;
+ 	uint16 color16;
+ 	HGDI_BITMAP hSrcBmp;
++	uint16 pat;
+ 
+ 	/* D = (S & P) | (~S & D) */
+ 	/* DSPDxax, used to draw glyphs */
+ 
+ 	color16 = gdi_get_color_16bpp(hdcDest, hdcDest->textColor);
++	Data_Write_UINT16(&pat, color16);
+ 
+ 	hSrcBmp = (HGDI_BITMAP) hdcSrc->selectedObject;
+ 
+@@ -397,7 +404,7 @@ static int BitBlt_DSPDxax_16bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 			for (x = 0; x < nWidth; x++)
+ 			{
+ 				src16 = (*srcp << 8) | *srcp;
+-				*dstp = (src16 & color16) | (~src16 & *dstp);
++				*dstp = (src16 & pat) | (~src16 & *dstp);
+ 				srcp++;
+ 				dstp++;
+ 			}
+@@ -580,7 +587,7 @@ static int BitBlt_PATCOPY_16bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 			{
+ 				for (x = 0; x < nWidth; x++)
+ 				{
+-					*dstp = color16;
++					Data_Write_UINT16(dstp, color16);
+ 					dstp++;
+ 				}
+ 			}
+@@ -613,10 +620,12 @@ static int BitBlt_PATINVERT_16bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int n
+ 	uint16* dstp;
+ 	uint16* patp;
+ 	uint16 color16;
++	uint16 pat;
+ 
+ 	if (hdcDest->brush->style == GDI_BS_SOLID)
+ 	{
+ 		color16 = gdi_get_color_16bpp(hdcDest, hdcDest->brush->color);
++		Data_Write_UINT16(&pat, color16);
+ 
+ 		for (y = 0; y < nHeight; y++)
+ 		{
+@@ -626,7 +635,7 @@ static int BitBlt_PATINVERT_16bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int n
+ 			{
+ 				for (x = 0; x < nWidth; x++)
+ 				{
+-					*dstp ^= color16;
++					*dstp ^= pat;
+ 					dstp++;
+ 				}
+ 			}
+diff --git a/libfreerdp-gdi/32bpp.c b/libfreerdp-gdi/32bpp.c
+index 5e946b0d5..536a7f57b 100644
+--- a/libfreerdp-gdi/32bpp.c
++++ b/libfreerdp-gdi/32bpp.c
+@@ -53,6 +53,13 @@ uint32 gdi_get_color_32bpp(HGDI_DC hdc, GDI_COLOR color)
+ 	return color32;
+ }
+ 
++#define Data_Write_UINT32(_d, _v) do { \
++   *((uint8*) _d) = (_v) & 0xFF; \
++   *((uint8*) _d + 1) = ((_v) >> 8) & 0xFF; \
++   *((uint8*) _d + 2) = ((_v) >> 16) & 0xFF; \
++   *((uint8*) _d + 3) = ((_v) >> 24) & 0xFF; \
++} while (0)
++
+ int FillRect_32bpp(HGDI_DC hdc, HGDI_RECT rect, HGDI_BRUSH hbr)
+ {
+ 	int x, y;
+@@ -76,7 +83,7 @@ int FillRect_32bpp(HGDI_DC hdc, HGDI_RECT rect, HGDI_BRUSH hbr)
+ 		{
+ 			for (x = 0; x < nWidth; x++)
+ 			{
+-				*dstp = color32;
++				Data_Write_UINT32(dstp, color32);
+ 				dstp++;
+ 			}
+ 		}
+@@ -390,11 +397,13 @@ static int BitBlt_DSPDxax_32bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 	uint8* patp;
+ 	uint32 color32;
+ 	HGDI_BITMAP hSrcBmp;
++	uint32 pat;
+ 
+ 	/* D = (S & P) | (~S & D) */
+ 	/* DSPDxax, used to draw glyphs */
+ 
+ 	color32 = gdi_get_color_32bpp(hdcDest, hdcDest->textColor);
++	Data_Write_UINT32(&pat, color32);
+ 
+ 	hSrcBmp = (HGDI_BITMAP) hdcSrc->selectedObject;
+ 	srcp = hSrcBmp->data;
+@@ -414,7 +423,7 @@ static int BitBlt_DSPDxax_32bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 		{
+ 			for (x = 0; x < nWidth; x++)
+ 			{
+-				patp = (uint8*) &color32;
++				patp = (uint8*) &pat;
+ 
+ 				*dstp = (*srcp & *patp) | (~(*srcp) & *dstp);
+ 				dstp++;
+@@ -609,7 +618,7 @@ static int BitBlt_PATCOPY_32bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int nWi
+ 			{
+ 				for (x = 0; x < nWidth; x++)
+ 				{
+-					*dstp = color32;
++					Data_Write_UINT32(dstp, color32);
+ 					dstp++;
+ 				}
+ 			}
+@@ -642,10 +651,12 @@ static int BitBlt_PATINVERT_32bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int n
+ 	uint32* dstp;
+ 	uint32* patp;
+ 	uint32 color32;
+-		
++	uint32 pat;
++
+ 	if (hdcDest->brush->style == GDI_BS_SOLID)
+ 	{
+ 		color32 = gdi_get_color_32bpp(hdcDest, hdcDest->brush->color);
++		Data_Write_UINT32(&pat, color32);
+ 
+ 		for (y = 0; y < nHeight; y++)
+ 		{
+@@ -655,7 +666,7 @@ static int BitBlt_PATINVERT_32bpp(HGDI_DC hdcDest, int nXDest, int nYDest, int n
+ 			{
+ 				for (x = 0; x < nWidth; x++)
+ 				{
+-					*dstp ^= color32;
++					*dstp ^= pat;
+ 					dstp++;
+ 				}
+ 			}
+-- 
+2.14.2
+

@@ -1,0 +1,75 @@
+From 4db610f292aca3ae4ed0bb59ed1972202a1c6b27 Mon Sep 17 00:00:00 2001
+From: Vic Lee <llyzs@163.com>
+Date: Wed, 11 Apr 2012 12:37:47 +0800
+Subject: [PATCH 1/2] x11: release all pressed keys when window is unmapped.
+
+https://github.com/FreeRDP/FreeRDP/pull/547
+
+Backported by Ondrej Holy <oholy@redhat.com>.
+---
+ client/X11/xf_event.c    |  2 ++
+ client/X11/xf_keyboard.c | 22 ++++++++++++++++++++++
+ client/X11/xf_keyboard.h |  1 +
+ 3 files changed, 25 insertions(+)
+
+diff --git a/client/X11/xf_event.c b/client/X11/xf_event.c
+index b5c381f..cbcfc65 100644
+--- a/client/X11/xf_event.c
++++ b/client/X11/xf_event.c
+@@ -507,6 +507,8 @@ boolean xf_event_UnmapNotify(xfInfo* xfi, XEvent* event, boolean app)
+ 	rdpWindow* window;
+ 	rdpRail* rail = ((rdpContext*) xfi->context)->rail;
+ 
++	xf_kbd_release_all_keypress(xfi);
++
+ 	if (app != true)
+ 		return true;
+ 
+diff --git a/client/X11/xf_keyboard.c b/client/X11/xf_keyboard.c
+index cb82fa4..e94b362 100644
+--- a/client/X11/xf_keyboard.c
++++ b/client/X11/xf_keyboard.c
+@@ -50,6 +50,28 @@ void xf_kbd_unset_keypress(xfInfo* xfi, uint8 keycode)
+ 		return;
+ }
+ 
++void xf_kbd_release_all_keypress(xfInfo* xfi)
++{
++	int keycode;
++	uint16 flags;
++	uint8 rdp_scancode;
++	boolean extended;
++
++	for (keycode = 0; keycode < sizeof(xfi->pressed_keys) / sizeof(xfi->pressed_keys[0]); keycode++)
++	{
++		if (xfi->pressed_keys[keycode] != NoSymbol)
++		{
++			rdp_scancode = freerdp_kbd_get_scancode_by_keycode(keycode, &extended);
++
++			flags = KBD_FLAGS_RELEASE;
++			flags |= (extended) ? KBD_FLAGS_EXTENDED : 0;
++			xfi->instance->input->KeyboardEvent(xfi->instance->input, flags, rdp_scancode);
++
++			xfi->pressed_keys[keycode] = NoSymbol;
++		}
++	}
++}
++
+ boolean xf_kbd_key_pressed(xfInfo* xfi, KeySym keysym)
+ {
+ 	KeyCode keycode = XKeysymToKeycode(xfi->display, keysym);
+diff --git a/client/X11/xf_keyboard.h b/client/X11/xf_keyboard.h
+index 92e08fc..e316f07 100644
+--- a/client/X11/xf_keyboard.h
++++ b/client/X11/xf_keyboard.h
+@@ -28,6 +28,7 @@
+ void xf_kbd_init(xfInfo* xfi);
+ void xf_kbd_set_keypress(xfInfo* xfi, uint8 keycode, KeySym keysym);
+ void xf_kbd_unset_keypress(xfInfo* xfi, uint8 keycode);
++void xf_kbd_release_all_keypress(xfInfo* xfi);
+ boolean xf_kbd_key_pressed(xfInfo* xfi, KeySym keysym);
+ void xf_kbd_send_key(xfInfo* xfi, boolean down, uint8 keycode);
+ int xf_kbd_read_keyboard_state(xfInfo* xfi);
+-- 
+2.9.3
+

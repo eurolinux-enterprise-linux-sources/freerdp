@@ -45,7 +45,7 @@ index b05100e..db09960 100644
 +	if (strlen(hostname) == pattern_length)
 +	{
 +		if (memcmp((void*) hostname, (void*) pattern, pattern_length) == 0)
-+			return TRUE;
++			return true;
 +	}
 +
 +	/* ccpp: Check for wildcard certificates */
@@ -67,7 +67,7 @@ index b05100e..db09960 100644
 +
 +			if (hostname[hostname_position] != pattern[pattern_position] )
 +			{
-+				return FALSE;
++				return false;
 +			}
 +		}
 +	}
@@ -77,11 +77,11 @@ index b05100e..db09960 100644
 +		char *check_hostname = &hostname[ strlen(hostname) - pattern_length+1 ];
 +		if (memcmp((void*) check_hostname, (void*) &pattern[1], pattern_length - 1) == 0 )
 +		{
-+			return TRUE;
++			return true;
 +		}
 +	}
 +
-+	return FALSE;
++	return false;
 +}
 +
  boolean tls_verify_certificate(rdpTls* tls, CryptoCert cert, char* hostname)
@@ -97,7 +97,7 @@ index b05100e..db09960 100644
 -				hostname_match = true;
 -		}
 +		if (tls_match_hostname(common_name, common_name_length, hostname))
-+			hostname_match = TRUE;
++			hostname_match = true;
  	}
  
  	/* compare against alternative names */
@@ -110,7 +110,7 @@ index b05100e..db09960 100644
  			{
 -				if (memcmp((void*) hostname, (void*) alt_names[index], alt_names_lengths[index]) == 0)
 -					hostname_match = true;
-+				hostname_match = TRUE;
++				hostname_match = true;
 +				break;
  			}
  		}

@@ -1,0 +1,29 @@
+From 4720596d610e5406d0445433f1a079fc84858fa7 Mon Sep 17 00:00:00 2001
+From: cool <whoami@archer.localdomain>
+Date: Thu, 9 Feb 2012 22:20:52 -1100
+Subject: [PATCH] remove unncessary NULL ptr check
+
+---
+ libfreerdp-utils/memory.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/libfreerdp-utils/memory.c b/libfreerdp-utils/memory.c
+index d4d17a620..676fd3ffa 100644
+--- a/libfreerdp-utils/memory.c
++++ b/libfreerdp-utils/memory.c
+@@ -82,12 +82,6 @@ void* xrealloc(void* ptr, size_t size)
+ 	if (size < 1)
+ 		size = 1;
+ 
+-	if (ptr == NULL)
+-	{
+-		printf("xrealloc: null pointer given\n");
+-		return NULL;
+-	}
+-
+ 	mem = realloc(ptr, size);
+ 
+ 	if (mem == NULL)
+-- 
+2.14.1
+
