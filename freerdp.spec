@@ -1,54 +1,94 @@
-Name:           freerdp
-Version:        1.0.2
-Release:        6%{?dist}.1
-Summary:        Remote Desktop Protocol client
+%global gittag 2.0.0-rc4
 
-Group:          Applications/Communications
+# Can be rebuilt with FFmpeg/H264 support enabled by passing "--with=ffmpeg",
+# "--with=x264" or "--with=openh264" to mock/rpmbuild; or by globally setting
+# these variables:
+
+#global _with_ffmpeg 1
+#global _with_x264 1
+#global _with_openh264 1
+
+# Momentarily disable GSS support
+# https://github.com/FreeRDP/FreeRDP/issues/4348
+#global _with_gss 1
+
+# Disable server support in RHEL
+# https://bugzilla.redhat.com/show_bug.cgi?id=1639165
+%{!?rhel:%global _with_server 1}
+
+Name:           freerdp
+Version:        2.0.0
+Release:        1.rc4%{?dist}
+Summary:        Free implementation of the Remote Desktop Protocol (RDP)
 License:        ASL 2.0
 URL:            http://www.freerdp.com/
-Source0:        http://pub.freerdp.com/releases/%{name}-%{version}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  cmake
-BuildRequires:  xmlto
-BuildRequires:  openssl-devel
+Source0:        https://github.com/FreeRDP/FreeRDP/archive/%{gittag}/FreeRDP-%{gittag}.tar.gz
+Source1:        build-config.h
+
+BuildRequires:  gcc
+BuildRequires:  gcc-c++
+BuildRequires:  alsa-lib-devel
+BuildRequires:  cmake >= 2.8
+BuildRequires:  cups-devel
+BuildRequires:  gsm-devel
+BuildRequires:  libjpeg-turbo-devel
 BuildRequires:  libX11-devel
-BuildRequires:  libXext-devel
-BuildRequires:  libXinerama-devel
 BuildRequires:  libXcursor-devel
 BuildRequires:  libXdamage-devel
-BuildRequires:  libXv-devel
+BuildRequires:  libXext-devel
+BuildRequires:  libXi-devel
+BuildRequires:  libXinerama-devel
 BuildRequires:  libxkbfile-devel
-BuildRequires:  pulseaudio-libs-devel
-BuildRequires:  cups-devel
-BuildRequires:  pcsc-lite-devel
-BuildRequires:  desktop-file-utils
+BuildRequires:  libXrandr-devel
+%{?_with_server:BuildRequires:  libXtst-devel}
+BuildRequires:  libXv-devel
+%{?_with_openh264:BuildRequires:  openh264-devel}
+%{?_with_x264:BuildRequires:  x264-devel}
+%{?_with_server:BuildRequires:  pam-devel}
+BuildRequires:  xmlto
+BuildRequires:  zlib-devel
+
+BuildRequires:  pkgconfig(dbus-1)
+BuildRequires:  pkgconfig(dbus-glib-1)
+BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(gstreamer-1.0)
+BuildRequires:  pkgconfig(gstreamer-base-1.0)
+BuildRequires:  pkgconfig(gstreamer-app-1.0)
+BuildRequires:  pkgconfig(gstreamer-audio-1.0)
+BuildRequires:  pkgconfig(gstreamer-fft-1.0)
+BuildRequires:  pkgconfig(gstreamer-pbutils-1.0)
+BuildRequires:  pkgconfig(gstreamer-video-1.0)
+%{?_with_gss:BuildRequires:  pkgconfig(krb5) >= 1.13}
+BuildRequires:  pkgconfig(libpcsclite)
+BuildRequires:  pkgconfig(libpulse)
+BuildRequires:  pkgconfig(libsystemd)
+BuildRequires:  pkgconfig(openssl)
+BuildRequires:  pkgconfig(wayland-client)
+BuildRequires:  pkgconfig(wayland-scanner)
+BuildRequires:  pkgconfig(xkbcommon)
+
+%{?_with_ffmpeg:
+BuildRequires:  pkgconfig(libavcodec) >= 57.48.101
+BuildRequires:  pkgconfig(libavutil)
+}
 
 Provides:       xfreerdp = %{version}-%{release}
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
-Requires:       %{name}-plugins%{?_isa} = %{version}-%{release}
-
-Patch0: 0001-xfreerdp.1.xml-Don-t-claim-to-support-multiple-conne.patch
-Patch1: 0002-Replace-itemizedlist-s-with-variablelist-s.patch
-Patch2: 0003-List-plugins-available-in-RHEL-6.patch
-
-# https://bugzilla.redhat.com/show_bug.cgi?id=1186916
-Patch3: libfreerdp-core-fix-issue-436.patch
-
-# https://bugzilla.redhat.com/show_bug.cgi?id=1296654
-Patch4: fix-crashes-in-pulseaudio.patch
+Requires:       libwinpr%{?_isa} = %{version}-%{release}
 
 %description
-The xfreerdp Remote Desktop Protocol (RDP) client from the FreeRDP
+The xfreerdp & wlfreerdp Remote Desktop Protocol (RDP) clients from the FreeRDP
 project.
 
-xfreerdp can connect to RDP servers such as Microsoft Windows
+xfreerdp & wlfreerdp can connect to RDP servers such as Microsoft Windows
 machines, xrdp and VirtualBox.
-
 
 %package        libs
 Summary:        Core libraries implementing the RDP protocol
-Group:          Applications/Communications
+Requires:       libwinpr%{?_isa} = %{version}-%{release}
+Obsoletes:      %{name}-plugins < 2.0.0
+Provides:       %{name}-plugins = %{version}-%{release}
 %description    libs
 libfreerdp-core can be embedded in applications.
 
@@ -57,129 +97,238 @@ applications together with libfreerdp-core.
 
 libfreerdp-core can be extended with plugins handling RDP channels.
 
-
-%package        plugins
-Summary:        Plugins for handling the standard RDP channels
-Group:          Applications/Communications
-Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
-%description    plugins
-A set of plugins to the channel manager implementing the standard virtual
-channels extending RDP core functionality. For instance, sounds, clipboard
-sync, disk/printer redirection, etc.
-
-
 %package        devel
 Summary:        Development files for %{name}
-Group:          Development/Libraries
 Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
 Requires:       pkgconfig
+Requires:       cmake >= 2.8
 
 %description    devel
-The %{name}-devel package contains libraries and header files for
-developing applications that use %{name}-libs.
+The %{name}-devel package contains libraries and header files for developing
+applications that use %{name}-libs.
 
+%{?_with_server:
+%package        server
+Summary:        Server support for %{name}
+Requires:       libwinpr%{?_isa} = %{version}-%{release}
+Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
+
+%description    server
+The %{name}-server package contains servers which can export a desktop via
+the RDP protocol.
+}
+
+%package -n     libwinpr
+Summary:        Windows Portable Runtime
+Provides:       %{name}-libwinpr = %{version}-%{release}
+
+%description -n libwinpr
+WinPR provides API compatibility for applications targeting non-Windows
+environments. When on Windows, the original native API is being used instead of
+the equivalent WinPR implementation, without having to modify the code using it.
+
+%package -n     libwinpr-devel
+Summary:        Windows Portable Runtime development files
+Requires:       libwinpr%{?_isa} = %{version}-%{release}
+Requires:       pkgconfig
+Requires:       cmake >= 2.8
+
+%description -n libwinpr-devel
+The %{name}-libwinpr-devel package contains libraries and header files for
+developing applications that use %{name}-libwinpr.
 
 %prep
+%autosetup -p1 -n FreeRDP-%{gittag}
 
-%setup -q
-
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1 -b .fix-invalid-dereference
-%patch4 -p1 -b .fix-crashes-in-pulseaudio
-
-cat << EOF > xfreerdp.desktop 
-[Desktop Entry]
-Type=Application
-Name=X FreeRDP
-NoDisplay=true
-Comment=Connect to RDP server and display remote desktop
-Icon=%{name}
-Exec=/usr/bin/xfreerdp
-Terminal=false
-Categories=Network;RemoteAccess;
-EOF
-
+# Rpmlint fixes
+find . -name "*.h" -exec chmod 664 {} \;
+find . -name "*.c" -exec chmod 664 {} \;
 
 %build
-
-%cmake \
-        -DWITH_CUPS=ON \
-        -DWITH_PCSC=ON \
-        -DWITH_PULSEAUDIO=ON \
-        -DWITH_X11=ON \
-        -DWITH_XCURSOR=ON \
-        -DWITH_XEXT=ON \
-        -DWITH_XINERAMA=ON \
-        -DWITH_XKBFILE=ON \
-        -DWITH_XV=ON \
-        -DWITH_ALSA=OFF \
-        -DWITH_CUNIT=OFF \
-        -DWITH_DIRECTFB=OFF \
-        -DWITH_FFMPEG=OFF \
-        -DWITH_SSE2=OFF \
-        -DCMAKE_INSTALL_LIBDIR:PATH=%{_lib} \
-        .
+%cmake %{?_cmake_skip_rpath} \
+    -DCMAKE_INSTALL_LIBDIR:PATH=%{_lib} \
+    -DWITH_ALSA=ON \
+    -DWITH_CUPS=ON \
+    -DWITH_CHANNELS=ON -DBUILTIN_CHANNELS=OFF \
+    -DWITH_CLIENT=ON \
+    -DWITH_DIRECTFB=OFF \
+    -DWITH_FFMPEG=%{?_with_ffmpeg:ON}%{?!_with_ffmpeg:OFF} \
+    -DWITH_GSM=ON \
+    -DWITH_GSSAPI=%{?_with_gss:ON}%{?!_with_gss:OFF} \
+    -DWITH_GSTREAMER_1_0=ON -DWITH_GSTREAMER_0_10=OFF \
+    -DGSTREAMER_1_0_INCLUDE_DIRS=%{_includedir}/gstreamer-1.0 \
+    -DWITH_IPP=OFF \
+    -DWITH_JPEG=ON \
+    -DWITH_MANPAGES=ON \
+    -DWITH_OPENH264=%{?_with_openh264:ON}%{?!_with_openh264:OFF} \
+    -DWITH_OPENSSL=ON \
+    -DWITH_PCSC=ON \
+    -DWITH_PULSE=ON \
+    -DWITH_SERVER=%{?_with_server:ON}%{?!_with_server:OFF} \
+    -DWITH_SERVER_INTERFACE=%{?_with_server:ON}%{?!_with_server:OFF} \
+    -DWITH_SHADOW_X11=%{?_with_server:ON}%{?!_with_server:OFF} \
+    -DWITH_SHADOW_MAC=%{?_with_server:ON}%{?!_with_server:OFF} \
+    -DWITH_WAYLAND=ON \
+    -DWITH_X11=ON \
+    -DWITH_X264=%{?_with_x264:ON}%{?!_with_x264:OFF} \
+    -DWITH_XCURSOR=ON \
+    -DWITH_XEXT=ON \
+    -DWITH_XKBFILE=ON \
+    -DWITH_XI=ON \
+    -DWITH_XINERAMA=ON \
+    -DWITH_XRENDER=ON \
+    -DWITH_XTEST=%{?_with_server:ON}%{?!_with_server:OFF} \
+    -DWITH_XV=ON \
+    -DWITH_ZLIB=ON \
+%ifarch x86_64
+    -DWITH_SSE2=ON \
+%else
+    -DWITH_SSE2=OFF \
+%endif
+%ifarch armv7hl
+    -DARM_FP_ABI=hard \
+    -DWITH_NEON=OFF \
+%endif
+%ifarch armv7hnl
+    -DARM_FP_ABI=hard \
+    -DWITH_NEON=ON \
+%endif
+%ifarch armv5tel armv6l armv7l
+    -DARM_FP_ABI=soft \
+    -DWITH_NEON=OFF \
+%endif
+    .
 
 make %{?_smp_mflags}
 
+pushd winpr/tools/makecert-cli
+make %{?_smp_mflags}
+popd
 
 %install
-rm -rf $RPM_BUILD_ROOT
+%make_install
+%make_install COMPONENT=tools
 
-make install DESTDIR=$RPM_BUILD_ROOT INSTALL='install -p'
+find %{buildroot} -name "*.a" -delete
 
-# No need for keymap files when using xkbfile
-rm -rf $RPM_BUILD_ROOT/usr/share/freerdp
-
-desktop-file-install --dir=$RPM_BUILD_ROOT%{_datadir}/applications xfreerdp.desktop
-install -p -D resources/FreeRDP_Icon_256px.png $RPM_BUILD_ROOT%{_datadir}/icons/hicolor/256x256/apps/%{name}.png
-
-
-%clean
-rm -rf $RPM_BUILD_ROOT
-
-
-%post
-# This is no gtk application, but try to integrate nicely with GNOME if it is available
-gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
-
+# build-config.h is not multilib clean and multilib-rpm-config is not available
+mv $RPM_BUILD_ROOT/%{_includedir}/freerdp2/freerdp/build-config.h $RPM_BUILD_ROOT/%{_includedir}/freerdp2/freerdp/build-config-`getconf LONG_BIT`.h
+install -m 644 %{SOURCE1} $RPM_BUILD_ROOT/%{_includedir}/freerdp2/freerdp/
 
 %post libs -p /sbin/ldconfig
 
-
 %postun libs -p /sbin/ldconfig
 
+%post -n libwinpr -p /sbin/ldconfig
+
+%postun -n libwinpr -p /sbin/ldconfig
 
 %files
-%defattr(-,root,root,-)
+%{_bindir}/winpr-hash
+%{_bindir}/winpr-makecert
+%{_bindir}/wlfreerdp
 %{_bindir}/xfreerdp
-%{_mandir}/man1/xfreerdp.*
-%{_datadir}/applications/xfreerdp.desktop
-%{_datadir}/icons/hicolor/256x256/apps/%{name}.png
+%{_mandir}/man1/winpr-hash.1.*
+%{_mandir}/man1/winpr-makecert.1.*
+%{_mandir}/man1/wlfreerdp.1.*
+%{_mandir}/man1/xfreerdp.1.*
 
 %files libs
-%defattr(-,root,root,-)
-%doc LICENSE README ChangeLog
-%{_libdir}/lib%{name}-*.so.*
-%dir %{_libdir}/%{name}/
-
-%files plugins
-%defattr(-,root,root,-)
-%{_libdir}/%{name}/*
+%license LICENSE
+%doc README ChangeLog
+%{_libdir}/freerdp2/
+%{_libdir}/libfreerdp-client2.so.*
+%{?_with_server:
+%{_libdir}/libfreerdp-server2.so.*
+%{_libdir}/libfreerdp-shadow2.so.*
+%{_libdir}/libfreerdp-shadow-subsystem2.so.*
+}
+%{_libdir}/libfreerdp2.so.*
+%{_libdir}/libuwac0.so.*
+%{_mandir}/man7/wlog.*
 
 %files devel
-%defattr(-,root,root,-)
-%{_includedir}/%{name}/
-%{_libdir}/lib%{name}-*.so
-%{_libdir}/pkgconfig/%{name}.pc
+%{_includedir}/freerdp2
+%{_includedir}/uwac0
+%{_libdir}/cmake/FreeRDP2
+%{_libdir}/cmake/FreeRDP-Client2
+%{?_with_server:
+%{_libdir}/cmake/FreeRDP-Server2
+%{_libdir}/cmake/FreeRDP-Shadow2
+}
+%{_libdir}/cmake/uwac0
+%{_libdir}/libfreerdp-client2.so
+%{?_with_server:
+%{_libdir}/libfreerdp-server2.so
+%{_libdir}/libfreerdp-shadow2.so
+%{_libdir}/libfreerdp-shadow-subsystem2.so
+}
+%{_libdir}/libfreerdp2.so
+%{_libdir}/libuwac0.so
+%{_libdir}/pkgconfig/freerdp2.pc
+%{_libdir}/pkgconfig/freerdp-client2.pc
+%{?_with_server:
+%{_libdir}/pkgconfig/freerdp-server2.pc
+%{_libdir}/pkgconfig/freerdp-shadow2.pc
+}
+%{_libdir}/pkgconfig/uwac0.pc
 
+%{?_with_server:
+%files server
+%{_bindir}/freerdp-shadow-cli
+%{_mandir}/man1/freerdp-shadow-cli.1.*
+}
+
+%files -n libwinpr
+%{!?_licensedir:%global license %%doc}
+%license LICENSE
+%doc README ChangeLog
+%{_libdir}/libwinpr2.so.*
+%{_libdir}/libwinpr-tools2.so.*
+
+%files -n libwinpr-devel
+%{_libdir}/cmake/WinPR2
+%{_includedir}/winpr2
+%{_libdir}/libwinpr2.so
+%{_libdir}/libwinpr-tools2.so
+%{_libdir}/pkgconfig/winpr2.pc
+%{_libdir}/pkgconfig/winpr-tools2.pc
 
 %changelog
-* Fri Jan 15 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-6.el7_2.1
+* Wed Feb 20 2019 Ondrej Holy <oholy@redhat.com> - 2.0.0-1.rc4
+- Update to 2.0.0-rc4 (#1291254)
+
+* Wed Jan 31 2018 Ondrej Holy <oholy@redhat.com> - 1.0.2-15
+- Fix smartcard usage in manpage (#1428041)
+
+* Thu Nov 23 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-14
+- Add FIPS mode support (#1363811)
+
+* Thu Oct 5 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-13
+- Fix NTLM on big endian (#1204742)
+- Fix colors on big endian (#1308810)
+
+* Thu Sep 21 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-12
+- Add description for available plugins (#1428041)
+
+* Thu Sep 7 2017 Ondrej Holy <oholy@redhat.com> - 1.0.2-11
+- Use boolean types defined stdbool.h (#1404575)
+- Prevent stucked keys on focus out and unmap events (#1415069)
+- Fix crashes when copying images (#1417536)
+- Enable TLS 1.1 connections and later (#1312967)
+
+* Mon Apr 18 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-10
+- Add support for wildcard certificates (#1275241)
+
+* Wed Apr 6 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-9
+- Fix crash if requested bitmap isn't in cache (#1311164)
+
+* Wed Apr 6 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-8
+- Fix crash if pulseaudio device isn't specified (#1067543)
+
+* Fri Jan 15 2016 Ondrej Holy <oholy@redhat.com> - 1.0.2-7
 - Fix crashes in pulseaudio
-- Resolves: #1298832
+- Resolves: #1210049
 
 * Thu Mar 19 2015 Ondrej Holy <oholy@redhat.com> - 1.0.2-6
 - Fix crash during CA verification caused by invalid pointer dereference

@@ -8,10 +8,12 @@ interoperability can finally liberate your computing experience.
 Resources
 ---------
 
-Website: http://www.freerdp.com/
-Wiki: https://github.com/FreeRDP/FreeRDP/wiki
+Project website: https://www.freerdp.com/
+Issue tracker: https://github.com/FreeRDP/FreeRDP/issues
 Sources: https://github.com/FreeRDP/FreeRDP/
-API doc: http://www.freerdp.com/api/
+Downloads: https://pub.freerdp.com/releases/
+Wiki: https://github.com/FreeRDP/FreeRDP/wiki
+API documentation: https://pub.freerdp.com/api/
 
 IRC channel: #freerdp @ irc.freenode.net
 Mailing list: https://lists.sourceforge.net/lists/listinfo/freerdp-devel
@@ -30,5 +32,3 @@ Compilation
 
 Instructions on how to get started compiling FreeRDP can be found on the wiki:
 https://github.com/FreeRDP/FreeRDP/wiki/Compilation
-
-

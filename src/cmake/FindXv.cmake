@@ -29,11 +29,12 @@
 #=============================================================================
 
 find_path(XV_INCLUDE_DIR NAMES X11/extensions/Xv.h
-          PATH_SUFFIXES X11/extensions
+          PATHS /opt/X11/include
           DOC "The Xv include directory"
 )
 
 find_library(XV_LIBRARY NAMES Xv
+          PATHS /opt/X11/lib
           DOC "The Xv library"
 )
 

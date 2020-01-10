@@ -1,8 +1,10 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * GDI Device Context Functions
  *
  * Copyright 2010-2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
+ * Copyright 2016 Armin Novak <armin.novak@thincast.com>
+ * Copyright 2016 Thincast Technologies GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +19,25 @@
  * limitations under the License.
  */
 
-#ifndef __GDI_DC_H
-#define __GDI_DC_H
+#ifndef FREERDP_GDI_DC_H
+#define FREERDP_GDI_DC_H
 
 #include <freerdp/api.h>
 #include <freerdp/gdi/gdi.h>
 
-FREERDP_API HGDI_DC gdi_GetDC();
-FREERDP_API HGDI_DC gdi_CreateDC(HCLRCONV clrconv, int bpp);
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+FREERDP_API HGDI_DC gdi_GetDC(void);
+FREERDP_API HGDI_DC gdi_CreateDC(UINT32 format);
 FREERDP_API HGDI_DC gdi_CreateCompatibleDC(HGDI_DC hdc);
 FREERDP_API HGDIOBJECT gdi_SelectObject(HGDI_DC hdc, HGDIOBJECT hgdiobject);
-FREERDP_API int gdi_DeleteObject(HGDIOBJECT hgdiobject);
-FREERDP_API int gdi_DeleteDC(HGDI_DC hdc);
+FREERDP_API BOOL gdi_DeleteObject(HGDIOBJECT hgdiobject);
+FREERDP_API BOOL gdi_DeleteDC(HGDI_DC hdc);
 
-#endif /* __GDI_DC_H */
+#ifdef __cplusplus
+ }
+#endif
+
+#endif /* FREERDP_GDI_DC_H */

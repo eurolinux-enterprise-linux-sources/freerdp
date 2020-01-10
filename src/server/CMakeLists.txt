@@ -1,9 +1,7 @@
-# FreeRDP: A Remote Desktop Protocol Client
+# FreeRDP: A Remote Desktop Protocol Implementation
 # FreeRDP Servers
 #
-# Copyright 2011 O.S. Systems Software Ltda.
-# Copyright 2011 Otavio Salvador <otavio@ossystems.com.br>
-# Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
+# Copyright 2012 Marc-Andre Moreau <marcandre.moreau@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,15 +17,72 @@
 
 # Servers
 
-if(NOT WIN32)
+add_subdirectory(common)
+add_subdirectory(shadow)
 
-	# Build Test Server
-	add_subdirectory(test)
-
-	# Build X11 Server
-	find_suggested_package(X11)
-	if(WITH_X11)
-		add_subdirectory(X11)
+if(FREERDP_VENDOR)
+	if(WITH_SAMPLE)
+		add_subdirectory(Sample)
 	endif()
-	
+
+	if(NOT WIN32)
+		if(APPLE AND (NOT IOS))
+			add_subdirectory(Mac)
+		endif()
+	else()
+		#add_subdirectory(Windows)
+	endif()
+
+	if(NOT DEFINED WITH_FREERDS)
+		set(WITH_FREERDS 1)
+	endif()
+
+	if(WITH_FREERDS AND (IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FreeRDS"))
+		add_subdirectory("FreeRDS")
+	endif()
+endif()
+
+# Pick up other servers
+
+set(FILENAME "ModuleOptions.cmake")
+file(GLOB FILEPATHS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*/${FILENAME}")
+
+foreach(FILEPATH ${FILEPATHS})
+	if(${FILEPATH} MATCHES "^([^/]*)/+${FILENAME}")
+		string(REGEX REPLACE "^([^/]*)/+${FILENAME}" "\\1" FREERDP_SERVER ${FILEPATH})
+		set(FREERDP_SERVER_ENABLED 0)
+		include(${FILEPATH})
+		if(FREERDP_SERVER_ENABLED)
+			if(NOT (${FREERDP_SERVER_VENDOR} MATCHES "FreeRDP"))
+				list(APPEND FREERDP_EXTRA_SERVERS ${FREERDP_SERVER})
+			endif()
+		endif()
+	endif()
+endforeach()
+
+foreach(FREERDP_SERVER ${FREERDP_EXTRA_SERVERS})
+	add_subdirectory(${FREERDP_SERVER})
+endforeach()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/freerdp-server.pc.in ${CMAKE_CURRENT_BINARY_DIR}/freerdp-server${FREERDP_VERSION_MAJOR}.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/freerdp-server${FREERDP_VERSION_MAJOR}.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+if(${CMAKE_VERSION} VERSION_GREATER "2.8.10")
+
+	export(PACKAGE freerdp-server)
+
+	SetFreeRDPCMakeInstallDir(FREERDP_SERVER_CMAKE_INSTALL_DIR "FreeRDP-Server${FREERDP_VERSION_MAJOR}")
+
+	configure_package_config_file(FreeRDP-ServerConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/FreeRDP-ServerConfig.cmake
+		INSTALL_DESTINATION ${FREERDP_SERVER_CMAKE_INSTALL_DIR}
+		PATH_VARS FREERDP_INCLUDE_DIR)
+
+	write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/FreeRDP-ServerConfigVersion.cmake
+		VERSION ${FREERDP_VERSION} COMPATIBILITY SameMajorVersion)
+
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/FreeRDP-ServerConfig.cmake ${CMAKE_CURRENT_BINARY_DIR}/FreeRDP-ServerConfigVersion.cmake
+		DESTINATION ${FREERDP_SERVER_CMAKE_INSTALL_DIR})
+
+	install(EXPORT FreeRDP-ServerTargets DESTINATION ${FREERDP_SERVER_CMAKE_INSTALL_DIR})
+
 endif()

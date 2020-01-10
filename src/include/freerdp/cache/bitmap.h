@@ -1,5 +1,5 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * Bitmap Cache V2
  *
  * Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
@@ -17,14 +17,15 @@
  * limitations under the License.
  */
 
-#ifndef __BITMAP_V2_CACHE_H
-#define __BITMAP_V2_CACHE_H
+#ifndef FREERDP_BITMAP_V2_CACHE_H
+#define FREERDP_BITMAP_V2_CACHE_H
 
 #include <freerdp/api.h>
 #include <freerdp/types.h>
 #include <freerdp/update.h>
 #include <freerdp/freerdp.h>
-#include <freerdp/utils/stream.h>
+
+#include <winpr/stream.h>
 
 typedef struct _BITMAP_V2_CELL BITMAP_V2_CELL;
 typedef struct rdp_bitmap_cache rdpBitmapCache;
@@ -33,7 +34,7 @@ typedef struct rdp_bitmap_cache rdpBitmapCache;
 
 struct _BITMAP_V2_CELL
 {
-	uint32 number;
+	UINT32 number;
 	rdpBitmap** entries;
 };
 
@@ -45,26 +46,29 @@ struct rdp_bitmap_cache
 	pCacheBitmapV2 CacheBitmapV2; /* 3 */
 	pCacheBitmapV3 CacheBitmapV3; /* 4 */
 	pBitmapUpdate BitmapUpdate; /* 5 */
-	uint32 paddingA[16 - 6]; /* 6 */
+	UINT32 paddingA[16 - 6]; /* 6 */
 
-	uint32 maxCells; /* 16 */
+	UINT32 maxCells; /* 16 */
 	BITMAP_V2_CELL* cells; /* 17 */
-	uint32 paddingB[32 - 18]; /* 18 */
+	UINT32 paddingB[32 - 18]; /* 18 */
 
 	/* internal */
-
-	rdpBitmap* bitmap;
 	rdpUpdate* update;
 	rdpContext* context;
 	rdpSettings* settings;
 };
 
-FREERDP_API rdpBitmap* bitmap_cache_get(rdpBitmapCache* bitmap_cache, uint32 id, uint32 index);
-FREERDP_API void bitmap_cache_put(rdpBitmapCache* bitmap_cache, uint32 id, uint32 index, rdpBitmap* bitmap);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 FREERDP_API void bitmap_cache_register_callbacks(rdpUpdate* update);
 
 FREERDP_API rdpBitmapCache* bitmap_cache_new(rdpSettings* settings);
 FREERDP_API void bitmap_cache_free(rdpBitmapCache* bitmap_cache);
 
-#endif /* __BITMAP_V2_CACHE_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* FREERDP_BITMAP_V2_CACHE_H */

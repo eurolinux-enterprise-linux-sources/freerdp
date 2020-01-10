@@ -1,5 +1,5 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * DirectFB Graphical Objects
  *
  * Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include <freerdp/utils/memory.h>
+#include <winpr/crt.h>
 
 #include "df_graphics.h"
 
@@ -44,7 +44,7 @@ void df_Pointer_New(rdpContext* context, rdpPointer* pointer)
 	if (result == DFB_OK)
 	{
 		int pitch;
-		uint8* point = NULL;
+		BYTE* point = NULL;
 
 		df_pointer->xhot = pointer->xPos;
 		df_pointer->yhot = pointer->yPos;
@@ -90,16 +90,31 @@ void df_Pointer_Set(rdpContext* context, rdpPointer* pointer)
 
 	dfi->layer->SetCooperativeLevel(dfi->layer, DLSCL_ADMINISTRATIVE);
 
-	result = dfi->layer->SetCursorShape(dfi->layer,
+	dfi->layer->SetCursorOpacity(dfi->layer, df_pointer ? 255: 0);
+
+	if(df_pointer != NULL)
+	{
+		result = dfi->layer->SetCursorShape(dfi->layer,
 			df_pointer->surface, df_pointer->xhot, df_pointer->yhot);
 
-	if (result != DFB_OK)
-	{
-		DirectFBErrorFatal("SetCursorShape Error", result);
-		return;
+		if (result != DFB_OK)
+		{
+			DirectFBErrorFatal("SetCursorShape Error", result);
+			return;
+		}
 	}
 
 	dfi->layer->SetCooperativeLevel(dfi->layer, DLSCL_SHARED);
+}
+
+void df_Pointer_SetNull(rdpContext* context)
+{
+	df_Pointer_Set(context, NULL);
+}
+
+void df_Pointer_SetDefault(rdpContext* context)
+{
+
 }
 
 /* Graphics Module */
@@ -108,14 +123,17 @@ void df_register_graphics(rdpGraphics* graphics)
 {
 	rdpPointer* pointer;
 
-	pointer = xnew(rdpPointer);
+	pointer = (rdpPointer*) malloc(sizeof(rdpPointer));
+	ZeroMemory(pointer, sizeof(rdpPointer));
 	pointer->size = sizeof(dfPointer);
 
 	pointer->New = df_Pointer_New;
 	pointer->Free = df_Pointer_Free;
 	pointer->Set = df_Pointer_Set;
+	pointer->SetNull = df_Pointer_SetNull;
+	pointer->SetDefault = df_Pointer_SetDefault;
 
 	graphics_register_pointer(graphics, pointer);
-	xfree(pointer);
+	free(pointer);
 }
 

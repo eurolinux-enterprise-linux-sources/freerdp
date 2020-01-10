@@ -1,5 +1,5 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * DirectFB Event Handling
  *
  * Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
@@ -17,17 +17,19 @@
  * limitations under the License.
  */
 
-#include <freerdp/kbd/kbd.h>
-#include <freerdp/kbd/vkcodes.h>
+#include <winpr/crt.h>
+#include <winpr/input.h>
+
+#include <freerdp/locale/keyboard.h>
 
 #include "df_event.h"
 
-static uint8 keymap[256];
-static uint8 functionmap[128];
+static BYTE keymap[256];
+static BYTE functionmap[128];
 
 void df_keyboard_init()
 {
-	memset(keymap, 0, sizeof(keymap));
+	ZeroMemory(keymap, sizeof(keymap));
 
 	/* Map DirectFB keycodes to Virtual Key Codes */
 
@@ -147,17 +149,16 @@ void df_keyboard_init()
 	keymap[DIKI_META_R - DIKI_UNKNOWN] = VK_RWIN;
 	keymap[DIKI_SUPER_L - DIKI_UNKNOWN] = VK_APPS;
 	
-	
-	memset(functionmap, 0, sizeof(functionmap));
+	ZeroMemory(functionmap, sizeof(functionmap));
 	
 	functionmap[DFB_FUNCTION_KEY(23) - DFB_FUNCTION_KEY(0)] = VK_HANGUL;
 	functionmap[DFB_FUNCTION_KEY(24) - DFB_FUNCTION_KEY(0)] = VK_HANJA;
 
 }
 
-void df_send_mouse_button_event(rdpInput* input, boolean down, uint32 button, uint16 x, uint16 y)
+void df_send_mouse_button_event(rdpInput* input, BOOL down, UINT32 button, UINT16 x, UINT16 y)
 {
-	uint16 flags;
+	UINT16 flags;
 
 	flags = (down) ? PTR_FLAGS_DOWN : 0;
 
@@ -172,14 +173,14 @@ void df_send_mouse_button_event(rdpInput* input, boolean down, uint32 button, ui
 		input->MouseEvent(input, flags, x, y);
 }
 
-void df_send_mouse_motion_event(rdpInput* input, uint16 x, uint16 y)
+void df_send_mouse_motion_event(rdpInput* input, UINT16 x, UINT16 y)
 {
 	input->MouseEvent(input, PTR_FLAGS_MOVE, x, y);
 }
 
-void df_send_mouse_wheel_event(rdpInput* input, sint16 axisrel, uint16 x, uint16 y)
+void df_send_mouse_wheel_event(rdpInput* input, INT16 axisrel, UINT16 x, UINT16 y)
 {
-	uint16 flags = PTR_FLAGS_WHEEL;
+	UINT16 flags = PTR_FLAGS_WHEEL;
 
 	if (axisrel < 0)
 		flags |= 0x0078;
@@ -189,29 +190,24 @@ void df_send_mouse_wheel_event(rdpInput* input, sint16 axisrel, uint16 x, uint16
 	input->MouseEvent(input, flags, x, y);
 }
 
-void df_send_keyboard_event(rdpInput* input, boolean down, uint8 keycode, uint8 function)
+void df_send_keyboard_event(rdpInput* input, BOOL down, BYTE keycode, BYTE function)
 {
-	uint16 flags;
-	uint8 vkcode;
-	uint8 scancode;
-	boolean extended;
-	
+	DWORD scancode = 0;
+	BYTE vkcode = VK_NONE;
+
 	if (keycode)
 		vkcode = keymap[keycode];
 	else if (function)
 		vkcode = functionmap[function];
-	else
-		return;
-	
-	scancode = freerdp_kbd_get_scancode_by_virtualkey(vkcode, &extended);
 
-	flags = (extended) ? KBD_FLAGS_EXTENDED : 0;
-	flags |= (down) ? KBD_FLAGS_DOWN : KBD_FLAGS_RELEASE;
+	if (vkcode != VK_NONE)
+		scancode = GetVirtualScanCodeFromVirtualKeyCode(vkcode, input->context->settings->KeyboardType);
 
-	input->KeyboardEvent(input, flags, scancode);
+	if (scancode)
+		freerdp_input_send_keyboard_event_ex(input, down, scancode);
 }
 
-boolean df_event_process(freerdp* instance, DFBEvent* event)
+BOOL df_event_process(freerdp* instance, DFBEvent* event)
 {
 	int flags;
 	rdpGdi* gdi;
@@ -251,19 +247,19 @@ boolean df_event_process(freerdp* instance, DFBEvent* event)
 				break;
 
 			case DIET_BUTTONPRESS:
-				df_send_mouse_button_event(instance->input, true, input_event->button, pointer_x, pointer_y);
+				df_send_mouse_button_event(instance->input, TRUE, input_event->button, pointer_x, pointer_y);
 				break;
 
 			case DIET_BUTTONRELEASE:
-				df_send_mouse_button_event(instance->input, false, input_event->button, pointer_x, pointer_y);
+				df_send_mouse_button_event(instance->input, FALSE, input_event->button, pointer_x, pointer_y);
 				break;
 
 			case DIET_KEYPRESS:
-				df_send_keyboard_event(instance->input, true, input_event->key_id - DIKI_UNKNOWN, input_event->key_symbol - DFB_FUNCTION_KEY(0));
+				df_send_keyboard_event(instance->input, TRUE, input_event->key_id - DIKI_UNKNOWN, input_event->key_symbol - DFB_FUNCTION_KEY(0));
 				break;
 
 			case DIET_KEYRELEASE:
-				df_send_keyboard_event(instance->input, false, input_event->key_id - DIKI_UNKNOWN, input_event->key_symbol - DFB_FUNCTION_KEY(0));
+				df_send_keyboard_event(instance->input, FALSE, input_event->key_id - DIKI_UNKNOWN, input_event->key_symbol - DFB_FUNCTION_KEY(0));
 				break;
 
 			case DIET_UNKNOWN:
@@ -271,5 +267,5 @@ boolean df_event_process(freerdp* instance, DFBEvent* event)
 		}
 	}
 
-	return true;
+	return TRUE;
 }

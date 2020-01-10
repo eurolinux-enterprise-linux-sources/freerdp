@@ -1,5 +1,5 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * DirectFB Client
  *
  * Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
@@ -17,9 +17,10 @@
  * limitations under the License.
  */
 
-#ifndef __DFREERDP_H
-#define __DFREERDP_H
+#ifndef FREERDP_CLIENT_DF_FREERDP_H
+#define FREERDP_CLIENT_DF_FREERDP_H
 
+#include "config.h"
 #include <freerdp/freerdp.h>
 #include <freerdp/graphics.h>
 #include <freerdp/gdi/gdi.h>
@@ -46,8 +47,8 @@ struct df_pointer
 {
 	rdpPointer pointer;
 	IDirectFBSurface* surface;
-	uint32 xhot;
-	uint32 yhot;
+	UINT32 xhot;
+	UINT32 yhot;
 };
 typedef struct df_pointer dfPointer;
 
@@ -66,4 +67,4 @@ struct df_info
 	IDirectFBEventBuffer* event_buffer;
 };
 
-#endif /* __DFREERDP_H */
+#endif /* FREERDP_CLIENT_DF_FREERDP_H */

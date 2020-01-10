@@ -1,5 +1,5 @@
 /**
- * FreeRDP: A Remote Desktop Protocol Client
+ * FreeRDP: A Remote Desktop Protocol Implementation
  * Remote Applications Integrated Locally (RAIL)
  *
  * Copyright 2011 Marc-Andre Moreau <marcandre.moreau@gmail.com>
@@ -18,8 +18,10 @@
  * limitations under the License.
  */
 
-#ifndef __RAIL_GLOBAL_H
-#define __RAIL_GLOBAL_H
+#ifndef FREERDP_RAIL_GLOBAL_H
+#define FREERDP_RAIL_GLOBAL_H
+
+#include <winpr/wnd.h>
 
 #include <freerdp/types.h>
 
@@ -69,18 +71,17 @@
 /*Bit mask values for SPI_ parameters*/
 enum SPI_MASK
 {
-	SPI_MASK_SET_DRAG_FULL_WINDOWS 		= 0x00000001,
-	SPI_MASK_SET_KEYBOARD_CUES 			= 0x00000002,
-	SPI_MASK_SET_KEYBOARD_PREF 			= 0x00000004,
-	SPI_MASK_SET_MOUSE_BUTTON_SWAP 		= 0x00000008,
-	SPI_MASK_SET_WORK_AREA 				= 0x00000010,
-	SPI_MASK_DISPLAY_CHANGE 			= 0x00000020,
-	SPI_MASK_TASKBAR_POS 				= 0x00000040,
-	SPI_MASK_SET_HIGH_CONTRAST 			= 0x00000080,
-	SPI_MASK_SET_SCREEN_SAVE_ACTIVE 	= 0x00000100,
-	SPI_MASK_SET_SET_SCREEN_SAVE_SECURE = 0x00000200
+	SPI_MASK_SET_DRAG_FULL_WINDOWS		= 0x00000001,
+	SPI_MASK_SET_KEYBOARD_CUES		= 0x00000002,
+	SPI_MASK_SET_KEYBOARD_PREF		= 0x00000004,
+	SPI_MASK_SET_MOUSE_BUTTON_SWAP		= 0x00000008,
+	SPI_MASK_SET_WORK_AREA			= 0x00000010,
+	SPI_MASK_DISPLAY_CHANGE			= 0x00000020,
+	SPI_MASK_TASKBAR_POS			= 0x00000040,
+	SPI_MASK_SET_HIGH_CONTRAST		= 0x00000080,
+	SPI_MASK_SET_SCREEN_SAVE_ACTIVE		= 0x00000100,
+	SPI_MASK_SET_SET_SCREEN_SAVE_SECURE	= 0x00000200
 };
-
 
 /* Client System Command PDU */
 #define SC_SIZE						0xF000
@@ -94,14 +95,6 @@ enum SPI_MASK
 
 /* Client Notify Event PDU */
 #ifndef _WIN32
-#define WM_LBUTTONDOWN					0x00000201
-#define WM_LBUTTONUP					0x00000202
-#define WM_RBUTTONDOWN					0x00000204
-#define WM_RBUTTONUP					0x00000205
-#define WM_CONTEXTMENU					0x0000007B
-#define WM_LBUTTONDBLCLK				0x00000203
-#define WM_RBUTTONDBLCLK				0x00000206
-
 #define NIN_SELECT					0x00000400
 #define NIN_KEYSELECT					0x00000401
 #define NIN_BALLOONSHOW					0x00000402
@@ -150,195 +143,245 @@ enum SPI_MASK
 #define TF_SFT_NOEXTRAICONSONMINIMIZED			0x00000400
 #define TF_SFT_DESKBAND					0x00000800
 
-struct _UNICODE_STRING
-{
-	uint16 length;
-	uint8* string;
-};
-typedef struct _UNICODE_STRING UNICODE_STRING;
+/* Extended Handshake Flags */
+#define RAIL_ORDER_HANDSHAKEEX_FLAGS_HIDEF		0x00000001
 
-struct _HIGH_CONTRAST
+/* Language Profile Information Flags */
+#define TF_PROFILETYPE_INPUTPROCESSOR			0x00000001
+#define TF_PROFILETYPE_KEYBOARDLAYOUT			0x00000002
+
+#define IME_STATE_CLOSED				0x00000000
+#define IME_STATE_OPEN					0x00000001
+
+#ifndef _IME_CMODES_
+#define IME_CMODE_NATIVE				0x00000001
+#define IME_CMODE_KATAKANA				0x00000002
+#define IME_CMODE_FULLSHAPE				0x00000008
+#define IME_CMODE_ROMAN					0x00000010
+#define IME_CMODE_CHARCODE				0x00000020
+#define IME_CMODE_HANJACONVERT				0x00000040
+#define IME_CMODE_SOFTKBD				0x00000080
+#define IME_CMODE_NOCONVERSION				0x00000100
+#define IME_CMODE_EUDC					0x00000200
+#define IME_CMODE_SYMBOL				0x00000400
+#define IME_CMODE_FIXED					0x00000800
+#endif
+
+#ifndef _IMM_
+#define IME_SMODE_NONE					0x00000000
+#define IME_SMODE_PLURALCASE				0x00000001
+#define IME_SMODE_SINGLECONVERT				0x00000002
+#define IME_SMODE_AUTOMATIC				0x00000004
+#define IME_SMODE_PHRASEPREDICT				0x00000008
+#define IME_SMODE_CONVERSATION				0x00000010
+#endif
+
+#define KANA_MODE_OFF					0x00000000
+#define KANA_MODE_ON					0x00000001
+
+struct _RAIL_UNICODE_STRING
 {
-	uint32 flags;
-	uint32 colorSchemeLength;
-	UNICODE_STRING colorScheme;
+	UINT16 length;
+	BYTE* string;
 };
-typedef struct _HIGH_CONTRAST HIGH_CONTRAST;
+typedef struct _RAIL_UNICODE_STRING RAIL_UNICODE_STRING;
+
+struct _RAIL_HIGH_CONTRAST
+{
+	UINT32 flags;
+	UINT32 colorSchemeLength;
+	RAIL_UNICODE_STRING colorScheme;
+};
+typedef struct _RAIL_HIGH_CONTRAST RAIL_HIGH_CONTRAST;
 
 /* RAIL Orders */
 
 struct _RAIL_HANDSHAKE_ORDER
 {
-	uint32 buildNumber;
+	UINT32 buildNumber;
 };
 typedef struct _RAIL_HANDSHAKE_ORDER RAIL_HANDSHAKE_ORDER;
 
+struct _RAIL_HANDSHAKE_EX_ORDER
+{
+	UINT32 buildNumber;
+	UINT32 railHandshakeFlags;
+};
+typedef struct _RAIL_HANDSHAKE_EX_ORDER RAIL_HANDSHAKE_EX_ORDER;
+
 struct _RAIL_CLIENT_STATUS_ORDER
 {
-	uint32 flags;
+	UINT32 flags;
 };
 typedef struct _RAIL_CLIENT_STATUS_ORDER RAIL_CLIENT_STATUS_ORDER;
 
 struct _RAIL_EXEC_ORDER
 {
-	uint16 flags;
-	UNICODE_STRING exeOrFile;
-	UNICODE_STRING workingDir;
-	UNICODE_STRING arguments;
+	UINT16 flags;
+	char* RemoteApplicationProgram;
+	char* RemoteApplicationWorkingDir;
+	char* RemoteApplicationArguments;
 };
 typedef struct _RAIL_EXEC_ORDER RAIL_EXEC_ORDER;
 
 struct _RAIL_EXEC_RESULT_ORDER
 {
-	uint16 flags;
-	uint16 execResult;
-	uint32 rawResult;
-	UNICODE_STRING exeOrFile;
+	UINT16 flags;
+	UINT16 execResult;
+	UINT32 rawResult;
+	RAIL_UNICODE_STRING exeOrFile;
 };
 typedef struct _RAIL_EXEC_RESULT_ORDER RAIL_EXEC_RESULT_ORDER;
 
 struct _RAIL_SYSPARAM_ORDER
 {
-	uint32 param;
-	uint32 params;
-	boolean dragFullWindows;
-	boolean keyboardCues;
-	boolean keyboardPref;
-	boolean mouseButtonSwap;
+	UINT32 param;
+	UINT32 params;
+	BOOL dragFullWindows;
+	BOOL keyboardCues;
+	BOOL keyboardPref;
+	BOOL mouseButtonSwap;
 	RECTANGLE_16 workArea;
 	RECTANGLE_16 displayChange;
 	RECTANGLE_16 taskbarPos;
-	HIGH_CONTRAST highContrast;
-	boolean setScreenSaveActive;
-	boolean setScreenSaveSecure;
+	RAIL_HIGH_CONTRAST highContrast;
+	BOOL setScreenSaveActive;
+	BOOL setScreenSaveSecure;
 };
 typedef struct _RAIL_SYSPARAM_ORDER RAIL_SYSPARAM_ORDER;
 
 struct _RAIL_ACTIVATE_ORDER
 {
-	uint32 windowId;
-	boolean enabled;
+	UINT32 windowId;
+	BOOL enabled;
 };
 typedef struct _RAIL_ACTIVATE_ORDER RAIL_ACTIVATE_ORDER;
 
 struct _RAIL_SYSMENU_ORDER
 {
-	uint32 windowId;
-	uint16 left;
-	uint16 top;
+	UINT32 windowId;
+	UINT16 left;
+	UINT16 top;
 };
 typedef struct _RAIL_SYSMENU_ORDER RAIL_SYSMENU_ORDER;
 
 struct _RAIL_SYSCOMMAND_ORDER
 {
-	uint32 windowId;
-	uint16 command;
+	UINT32 windowId;
+	UINT16 command;
 };
 typedef struct _RAIL_SYSCOMMAND_ORDER RAIL_SYSCOMMAND_ORDER;
 
 struct _RAIL_NOTIFY_EVENT_ORDER
 {
-	uint32 windowId;
-	uint32 notifyIconId;
-	uint32 message;
+	UINT32 windowId;
+	UINT32 notifyIconId;
+	UINT32 message;
 };
 typedef struct _RAIL_NOTIFY_EVENT_ORDER RAIL_NOTIFY_EVENT_ORDER;
 
 struct _RAIL_MINMAXINFO_ORDER
 {
-	uint32 windowId;
-	uint16 maxWidth;
-	uint16 maxHeight;
-	uint16 maxPosX;
-	uint16 maxPosY;
-	uint16 minTrackWidth;
-	uint16 minTrackHeight;
-	uint16 maxTrackWidth;
-	uint16 maxTrackHeight;
+	UINT32 windowId;
+	UINT16 maxWidth;
+	UINT16 maxHeight;
+	UINT16 maxPosX;
+	UINT16 maxPosY;
+	UINT16 minTrackWidth;
+	UINT16 minTrackHeight;
+	UINT16 maxTrackWidth;
+	UINT16 maxTrackHeight;
 };
 typedef struct _RAIL_MINMAXINFO_ORDER RAIL_MINMAXINFO_ORDER;
 
 struct _RAIL_LOCALMOVESIZE_ORDER
 {
-	uint32 windowId;
-	boolean isMoveSizeStart;
-	uint16 moveSizeType;
-	uint16 posX;
-	uint16 posY;
+	UINT32 windowId;
+	BOOL isMoveSizeStart;
+	UINT16 moveSizeType;
+	UINT16 posX;
+	UINT16 posY;
 };
 typedef struct _RAIL_LOCALMOVESIZE_ORDER RAIL_LOCALMOVESIZE_ORDER;
 
 struct _RAIL_WINDOWMOVE_ORDER
 {
-	uint32 windowId;
-	uint16 left;
-	uint16 top;
-	uint16 right;
-	uint16 bottom;
+	UINT32 windowId;
+	UINT16 left;
+	UINT16 top;
+	UINT16 right;
+	UINT16 bottom;
 };
 typedef struct _RAIL_WINDOWMOVE_ORDER RAIL_WINDOW_MOVE_ORDER;
 
 struct _RAIL_GET_APPID_REQ_ORDER
 {
-	uint32 windowId;
+	UINT32 windowId;
 };
 typedef struct _RAIL_GET_APPID_REQ_ORDER RAIL_GET_APPID_REQ_ORDER;
 
 struct _RAIL_GET_APPID_RESP_ORDER
 {
-	uint32 windowId;
-	UNICODE_STRING applicationId;
-	uint8 applicationIdBuffer[512];
+	UINT32 windowId;
+	WCHAR applicationId[256];
 };
 typedef struct _RAIL_GET_APPID_RESP_ORDER RAIL_GET_APPID_RESP_ORDER;
 
-struct _RAIL_LANGBARINFO_ORDER
+struct _RAIL_LANGBAR_INFO_ORDER
 {
-	uint32 languageBarStatus;
+	UINT32 languageBarStatus;
 };
-typedef struct _RAIL_LANGBARINFO_ORDER RAIL_LANGBAR_INFO_ORDER;
+typedef struct _RAIL_LANGBAR_INFO_ORDER RAIL_LANGBAR_INFO_ORDER;
+
+struct _RAIL_LANGUAGE_IME_INFO_ORDER
+{
+	UINT32 ProfileType;
+	UINT32 LanguageId;
+	GUID LanguageProfileClsId;
+	GUID ProfileGuid;
+};
+typedef struct _RAIL_LANGUAGE_IME_INFO_ORDER RAIL_LANGUAGE_IME_INFO_ORDER;
+
+struct _RAIL_COMPARTMENT_INFO_ORDER
+{
+	UINT32 ImeState;
+	UINT32 ImeConvMode;
+	UINT32 ImeSentenceMode;
+	UINT32 KanaMode;
+};
+typedef struct _RAIL_COMPARTMENT_INFO_ORDER RAIL_COMPARTMENT_INFO_ORDER;
 
 /* RAIL Constants */
 
-enum RDP_RAIL_PDU_TYPE
-{
-	RDP_RAIL_ORDER_EXEC		= 0x0001,
-	RDP_RAIL_ORDER_ACTIVATE		= 0x0002,
-	RDP_RAIL_ORDER_SYSPARAM		= 0x0003,
-	RDP_RAIL_ORDER_SYSCOMMAND	= 0x0004,
-	RDP_RAIL_ORDER_HANDSHAKE	= 0x0005,
-	RDP_RAIL_ORDER_NOTIFY_EVENT	= 0x0006,
-	RDP_RAIL_ORDER_WINDOWMOVE	= 0x0008,
-	RDP_RAIL_ORDER_LOCALMOVESIZE	= 0x0009,
-	RDP_RAIL_ORDER_MINMAXINFO	= 0x000A,
-	RDP_RAIL_ORDER_CLIENTSTATUS	= 0x000B,
-	RDP_RAIL_ORDER_SYSMENU		= 0x000C,
-	RDP_RAIL_ORDER_LANGBARINFO	= 0x000D,
-	RDP_RAIL_ORDER_EXEC_RESULT	= 0x0080,
-	RDP_RAIL_ORDER_GET_APPID_REQ	= 0x000E,
-	RDP_RAIL_ORDER_GET_APPID_RESP	= 0x000F
-};
+#define RDP_RAIL_ORDER_EXEC		0x0001
+#define RDP_RAIL_ORDER_ACTIVATE		0x0002
+#define RDP_RAIL_ORDER_SYSPARAM		0x0003
+#define RDP_RAIL_ORDER_SYSCOMMAND	0x0004
+#define RDP_RAIL_ORDER_HANDSHAKE	0x0005
+#define RDP_RAIL_ORDER_NOTIFY_EVENT	0x0006
+#define RDP_RAIL_ORDER_WINDOWMOVE	0x0008
+#define RDP_RAIL_ORDER_LOCALMOVESIZE	0x0009
+#define RDP_RAIL_ORDER_MINMAXINFO	0x000A
+#define RDP_RAIL_ORDER_CLIENTSTATUS	0x000B
+#define RDP_RAIL_ORDER_SYSMENU		0x000C
+#define RDP_RAIL_ORDER_LANGBARINFO	0x000D
+#define RDP_RAIL_ORDER_EXEC_RESULT	0x0080
+#define RDP_RAIL_ORDER_GET_APPID_REQ	0x000E
+#define RDP_RAIL_ORDER_GET_APPID_RESP	0x000F
+#define RDP_RAIL_ORDER_LANGUAGEIMEINFO	0x0011
+#define RDP_RAIL_ORDER_COMPARTMENTINFO	0x0012
+#define RDP_RAIL_ORDER_HANDSHAKE_EX	0x0013
 
-enum RDP_EVENT_TYPE_RAIL
-{
-	RDP_EVENT_TYPE_RAIL_CHANNEL_GET_SYSPARAMS = 1,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_EXEC_RESULTS,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_SERVER_SYSPARAM,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_SERVER_MINMAXINFO,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_SERVER_LOCALMOVESIZE,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_APPID_RESP,
-	RDP_EVENT_TYPE_RAIL_CHANNEL_LANGBARINFO,
 
-	RDP_EVENT_TYPE_RAIL_CLIENT_SET_SYSPARAMS,
-	RDP_EVENT_TYPE_RAIL_CLIENT_EXEC_REMOTE_APP,
-	RDP_EVENT_TYPE_RAIL_CLIENT_ACTIVATE,
-	RDP_EVENT_TYPE_RAIL_CLIENT_SYSMENU,
-	RDP_EVENT_TYPE_RAIL_CLIENT_SYSCOMMAND,
-	RDP_EVENT_TYPE_RAIL_CLIENT_NOTIFY_EVENT,
-	RDP_EVENT_TYPE_RAIL_CLIENT_WINDOW_MOVE,
-	RDP_EVENT_TYPE_RAIL_CLIENT_APPID_REQ,
-	RDP_EVENT_TYPE_RAIL_CLIENT_LANGBARINFO
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif /* __RAIL_GLOBAL_H */
+FREERDP_API BOOL rail_read_unicode_string(wStream* s, RAIL_UNICODE_STRING* unicode_string);
 
+#ifdef __cplusplus
+}
+#endif
+
+
+#endif /* FREERDP_RAIL_GLOBAL_H */
